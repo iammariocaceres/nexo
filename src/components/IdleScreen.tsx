@@ -137,7 +137,6 @@ interface IdleScreenProps {
 export const IdleScreen = ({ onWake }: IdleScreenProps) => {
   const { group, members, tasks } = useFamilyStore();
   const now = useLiveClock();
-  const greeting = GREETINGS[getGreetingKey()];
 
   const timeStr = now.toLocaleTimeString('en-US', {
     hour: '2-digit',
@@ -156,6 +155,15 @@ export const IdleScreen = ({ onWake }: IdleScreenProps) => {
   const totalDone = tasks.filter(t => t.completed).length;
   const totalXP = tasks.filter(t => t.completed).reduce((s, t) => s + t.points, 0);
 
+  const greetingKey = getGreetingKey();
+  const greeting = GREETINGS[greetingKey];
+
+  const BACKGROUNDS: Record<string, string> = {
+    morning: 'linear-gradient(135deg, #0d9488 0%, #06b6d4 100%)', // turquoise/teal
+    afternoon: 'linear-gradient(135deg, #f97316 0%, #ec4899 100%)', // sunset orange/pink
+    evening: 'linear-gradient(135deg, #0c1a2e 0%, #0a3d4a 40%, #1a1040 100%)', // dark night
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -166,7 +174,7 @@ export const IdleScreen = ({ onWake }: IdleScreenProps) => {
       onTouchStart={onWake}
       className="fixed inset-0 z-999 flex flex-col items-center justify-between overflow-hidden cursor-pointer select-none"
       style={{
-        background: 'linear-gradient(135deg, #0c1a2e 0%, #0a3d4a 40%, #1a1040 100%)',
+        background: BACKGROUNDS[greetingKey],
       }}
     >
       <FloatingParticles />
