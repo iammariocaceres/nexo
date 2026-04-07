@@ -160,11 +160,20 @@ const QuickStats = () => {
 // ─── Upcoming Events ──────────────────────────────────────────────────────────
 
 const UpcomingEvents = () => {
-  const events = [
-    { title: "Sofia's Birthday 🎂",  subtitle: 'In 5 days · Prepare gift!',     color: 'bg-amber-50 border-amber-200',   dot: 'bg-amber-400'  },
-    { title: 'Dentist for Leo 🦷',   subtitle: 'Tomorrow · 10:00 AM',           color: 'bg-cyan-50 border-cyan-200',     dot: 'bg-primary'    },
-    { title: 'Family Dinner 🍕',     subtitle: 'Friday · Choose your pizza!',   color: 'bg-emerald-50 border-emerald-200', dot: 'bg-emerald-400' },
-  ];
+  const { events } = useFamilyStore();
+  
+  const upcoming = [...events]
+    .filter(ev => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const [y, m, d] = ev.date.split('-');
+      const evDate = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+      return evDate >= today;
+    })
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 4);
+
+  const todayStr = new Date().toISOString().split('T')[0];
 
   return (
     <div className="bg-white/80 backdrop-blur-md rounded-3xl p-5 border border-white/40 shadow-lg">
@@ -172,17 +181,26 @@ const UpcomingEvents = () => {
         <LuCalendar className="w-5 h-5 text-primary" />
         <h3 className="font-black text-slate-800 text-base">Upcoming Events</h3>
       </div>
-      <div className="flex flex-col gap-2.5">
-        {events.map(ev => (
-          <div key={ev.title} className={`flex items-center gap-3 p-3 rounded-2xl border ${ev.color}`}>
-            <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${ev.dot}`} />
-            <div>
-              <p className="font-bold text-slate-800 text-sm">{ev.title}</p>
-              <p className="text-xs text-slate-500 font-medium">{ev.subtitle}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+      {upcoming.length === 0 ? (
+        <p className="text-slate-400 text-sm font-medium text-center py-4">No upcoming events 🎉</p>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          {upcoming.map(ev => {
+            const diffDays = Math.round((new Date(ev.date).getTime() - new Date(todayStr).getTime()) / (1000 * 60 * 60 * 24));
+            const dateLabel = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} days`;
+            
+            return (
+              <div key={ev.id} className={`flex items-center gap-3 p-3 rounded-2xl border ${ev.color} border-opacity-50`}>
+                <span className="text-xl shrink-0">{ev.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className={`font-bold text-sm truncate ${ev.text_color}`}>{ev.title}</p>
+                  <p className="text-xs text-slate-500 font-medium">{dateLabel}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

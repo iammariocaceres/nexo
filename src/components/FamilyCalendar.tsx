@@ -1,38 +1,132 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LuChevronLeft, LuChevronRight, LuPlus, LuX, LuCalendar } from 'react-icons/lu';
+import { LuChevronLeft, LuChevronRight, LuPlus, LuX, LuCalendar, LuTrash2 } from 'react-icons/lu';
+import { useFamilyStore, type CalendarEvent } from '../store/useFamilyStore';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface CalendarEvent {
-  id: string;
-  day: number;
-  month: number;   // 0-indexed
-  year: number;
-  title: string;
-  emoji: string;
-  color: string;   // Tailwind bg color class
-  textColor: string;
-}
-
-// ─── Mock Events ──────────────────────────────────────────────────────────────
-
-const INITIAL_EVENTS: CalendarEvent[] = [
-  { id: 'e1', day: 10, month: 3, year: 2026, title: "Diana's Dance Class", emoji: '💃', color: 'bg-pink-100', textColor: 'text-pink-700' },
-  { id: 'e2', day: 15, month: 3, year: 2026, title: "Dentist — Leo 🦷",    emoji: '🦷', color: 'bg-cyan-100',  textColor: 'text-cyan-700'  },
-  { id: 'e3', day: 18, month: 3, year: 2026, title: "Family Pizza Night",  emoji: '🍕', color: 'bg-orange-100',textColor: 'text-orange-700'},
-  { id: 'e4', day: 22, month: 3, year: 2026, title: "School Play 🎭",      emoji: '🎭', color: 'bg-purple-100',textColor: 'text-purple-700'},
-  { id: 'e5', day: 25, month: 3, year: 2026, title: "Mario's Birthday! 🎂",emoji: '🎂', color: 'bg-amber-100', textColor: 'text-amber-700' },
-  { id: 'e6', day: 7,  month: 4, year: 2026, title: "Movie Night 🎬",      emoji: '🎬', color: 'bg-indigo-100',textColor: 'text-indigo-700'},
-  { id: 'e7', day: 12, month: 4, year: 2026, title: "Camping Weekend 🏕️", emoji: '🏕️', color: 'bg-emerald-100',textColor: 'text-emerald-700'},
-  { id: 'e8', day: 20, month: 4, year: 2026, title: "Yoris's Work Trip",  emoji: '✈️', color: 'bg-sky-100',    textColor: 'text-sky-700'   },
-];
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
+const EMOJI_OPTIONS = ['📅', '🎉', '🎂', '✈️', '🏕️', '🍕', '🎬', '🦷', '💃', '🎭', '⚽️', '🛒', '🎮', '👨‍👩‍👧‍👦', '🏖️', '🎄'];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// Parse "YYYY-MM-DD" safely to local visual interpretation (ignoring GMT offsets)
+const parseDateString = (dateStr: string) => {
+  const [y, m, d] = dateStr.split('-');
+  return {
+    year: parseInt(y, 10),
+    month: parseInt(m, 10) - 1, // 0-indexed
+    day: parseInt(d, 10),
+  };
+};
+
+const getEventsForDay = (events: CalendarEvent[], year: number, month: number, day: number) => {
+  return events.filter(ev => {
+    const d = parseDateString(ev.date);
+    return d.year === year && d.month === month && d.day === day;
+  });
+};
+
+// ─── Event Modal ──────────────────────────────────────────────────────────────
+
+interface EventModalProps {
+  onClose: () => void;
+  onSave: (data: { title: string; date: string; emoji: string }) => void;
+  defaultDate?: string; // YYYY-MM-DD
+}
+
+const EventModal = ({ onClose, onSave, defaultDate }: EventModalProps) => {
+  const [title, setTitle] = useState('');
+  const [date, setDate] = useState(defaultDate || new Date().toISOString().split('T')[0]);
+  const [emoji, setEmoji] = useState('📅');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !date) return;
+    onSave({ title: title.trim(), date, emoji });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="w-full max-w-sm bg-white rounded-3xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
+      >
+        <div className="flex items-center justify-between p-5 border-b border-slate-100 shrink-0">
+          <h3 className="font-black text-slate-800 text-lg">Add Family Event</h3>
+          <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl transition-colors">
+            <LuX className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-4 overflow-y-auto">
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Event Title</label>
+            <input
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="e.g. Pizza Night"
+              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-primary focus:bg-white transition-all"
+              autoFocus
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Date</label>
+            <input
+              type="date"
+              value={date}
+              onChange={e => setDate(e.target.value)}
+              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-primary focus:bg-white transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Icon</label>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                value={emoji}
+                onChange={e => setEmoji(e.target.value)}
+                className="w-full sm:w-16 h-16 text-center text-3xl bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-primary focus:bg-white transition-all shrink-0"
+                placeholder="📅"
+                title="Type any emoji"
+              />
+              <div className="flex-1 flex flex-wrap gap-1.5 items-center">
+                {EMOJI_OPTIONS.slice(0, 10).map(em => (
+                  <button
+                    key={em}
+                    type="button"
+                    onClick={() => setEmoji(em)}
+                    className={`text-xl p-2 rounded-xl border-2 transition-all flex items-center justify-center ${emoji === em ? 'border-primary bg-primary/10 scale-110' : 'border-transparent bg-slate-50 hover:bg-slate-100'
+                      }`}
+                  >
+                    {em}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={!title.trim() || !date}
+            className="mt-2 w-full bg-primary text-white font-black py-3.5 rounded-2xl shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 disabled:pointer-events-none"
+          >
+            Create Event
+          </button>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
 
 // ─── Day Cell ─────────────────────────────────────────────────────────────────
 
@@ -40,7 +134,7 @@ interface DayCellProps {
   day: number | null;
   isToday: boolean;
   events: CalendarEvent[];
-  onSelect: (day: number, events: CalendarEvent[]) => void;
+  onSelect: (day: number) => void;
 }
 
 const DayCell = ({ day, isToday, events, onSelect }: DayCellProps) => {
@@ -54,7 +148,7 @@ const DayCell = ({ day, isToday, events, onSelect }: DayCellProps) => {
     <motion.button
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
-      onClick={() => onSelect(day, events)}
+      onClick={() => onSelect(day)}
       className={`
         aspect-square rounded-2xl p-1.5 flex flex-col items-center transition-all relative
         ${isToday
@@ -75,6 +169,7 @@ const DayCell = ({ day, isToday, events, onSelect }: DayCellProps) => {
           {events.slice(0, 3).map((ev, i) => (
             <span key={i} className="text-[10px] leading-none">{ev.emoji}</span>
           ))}
+          {events.length > 3 && <span className="text-[10px] leading-none text-slate-400 font-bold">+</span>}
         </div>
       )}
     </motion.button>
@@ -89,9 +184,11 @@ interface EventPanelProps {
   year: number;
   events: CalendarEvent[];
   onClose: () => void;
+  onAddEventClick: () => void;
+  onRemoveEvent: (id: string) => void;
 }
 
-const EventPanel = ({ day, month, year, events, onClose }: EventPanelProps) => {
+const EventPanel = ({ day, month, year, events, onClose, onAddEventClick, onRemoveEvent }: EventPanelProps) => {
   const dateLabel = new Date(year, month, day).toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric',
   });
@@ -124,23 +221,36 @@ const EventPanel = ({ day, month, year, events, onClose }: EventPanelProps) => {
           <div className="text-center py-6">
             <span className="text-4xl block mb-2">📅</span>
             <p className="text-slate-400 font-medium text-sm">Nothing planned yet!</p>
-            <button className="mt-3 flex items-center gap-1.5 mx-auto px-4 py-2 bg-primary/10 text-primary rounded-xl font-bold text-xs hover:bg-primary/20 transition-colors">
+            <button
+              onClick={onAddEventClick}
+              className="mt-3 flex items-center gap-1.5 mx-auto px-4 py-2 bg-primary/10 text-primary rounded-xl font-bold text-xs hover:bg-primary/20 transition-colors"
+            >
               <LuPlus className="w-3.5 h-3.5" />
               Add Event
             </button>
           </div>
         ) : (
           <div className="flex flex-col gap-2.5">
-            {events.map(ev => (
+            {events.map((ev) => (
               <div
                 key={ev.id}
-                className={`flex items-center gap-3 p-3 rounded-2xl ${ev.color}`}
+                className={`flex items-center gap-3 p-3 rounded-2xl ${ev.color} group`}
               >
                 <span className="text-xl shrink-0">{ev.emoji}</span>
-                <p className={`font-bold text-sm ${ev.textColor}`}>{ev.title}</p>
+                <p className={`font-bold text-sm flex-1 ${ev.text_color}`}>{ev.title}</p>
+                <button
+                  onClick={() => onRemoveEvent(ev.id)}
+                  className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity bg-white/50 hover:bg-white text-rose-500`}
+                  title="Remove event"
+                >
+                  <LuTrash2 className="w-4 h-4" />
+                </button>
               </div>
             ))}
-            <button className="mt-1 flex items-center gap-1.5 px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl font-bold text-xs text-slate-400 hover:text-primary hover:border-primary/30 transition-colors w-fit">
+            <button
+              onClick={onAddEventClick}
+              className="mt-1 flex items-center gap-1.5 px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl font-bold text-xs text-slate-400 hover:text-primary hover:border-primary/30 transition-colors w-fit"
+            >
               <LuPlus className="w-3.5 h-3.5" />
               Add another
             </button>
@@ -153,17 +263,26 @@ const EventPanel = ({ day, month, year, events, onClose }: EventPanelProps) => {
 
 // ─── Upcoming Events Sidebar ──────────────────────────────────────────────────
 
-const UpcomingSidebar = ({ events }: {
+const UpcomingSidebar = ({ events, onAddEventClick }: {
   events: CalendarEvent[];
+  onAddEventClick: () => void;
 }) => {
-  const today = new Date();
-  const upcoming = events
-    .filter(ev => {
-      const d = new Date(ev.year, ev.month, ev.day);
-      return d >= today;
-    })
-    .sort((a, b) => new Date(a.year, a.month, a.day).getTime() - new Date(b.year, b.month, b.day).getTime())
-    .slice(0, 6);
+  // Compute upcoming safely
+  const upcoming = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return events
+      .filter(ev => {
+        const d = parseDateString(ev.date);
+        const evDate = new Date(d.year, d.month, d.day);
+        return evDate >= today;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, 6);
+  }, [events]);
+
+  const todayStr = new Date().toISOString().split('T')[0];
 
   return (
     <div className="bg-white/80 backdrop-blur-md rounded-3xl p-5 border border-white/40 shadow-lg">
@@ -177,9 +296,10 @@ const UpcomingSidebar = ({ events }: {
       ) : (
         <div className="flex flex-col gap-2.5">
           {upcoming.map(ev => {
-            const evDate = new Date(ev.year, ev.month, ev.day);
-            const diffDays = Math.ceil((evDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            const dStr = ev.date;
+            const diffDays = Math.round((new Date(dStr).getTime() - new Date(todayStr).getTime()) / (1000 * 60 * 60 * 24));
             const dateLabel = diffDays === 0 ? 'Today!' : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} days`;
+            const d = parseDateString(ev.date);
 
             return (
               <motion.div
@@ -189,9 +309,9 @@ const UpcomingSidebar = ({ events }: {
               >
                 <span className="text-xl shrink-0">{ev.emoji}</span>
                 <div className="flex-1 min-w-0">
-                  <p className={`font-bold text-sm truncate ${ev.textColor}`}>{ev.title}</p>
+                  <p className={`font-bold text-sm truncate ${ev.text_color}`}>{ev.title}</p>
                   <p className="text-xs text-slate-400 font-medium">
-                    {MONTH_NAMES[ev.month]} {ev.day} · <span className="font-bold">{dateLabel}</span>
+                    {MONTH_NAMES[d.month]} {d.day} · <span className="font-bold">{dateLabel}</span>
                   </p>
                 </div>
               </motion.div>
@@ -200,7 +320,10 @@ const UpcomingSidebar = ({ events }: {
         </div>
       )}
 
-      <button className="mt-4 w-full py-2.5 border-2 border-dashed border-slate-200 rounded-2xl text-slate-300 hover:border-primary/40 hover:text-primary/60 transition-all flex items-center justify-center gap-2 text-sm font-bold group">
+      <button
+        onClick={onAddEventClick}
+        className="mt-4 w-full py-2.5 border-2 border-dashed border-slate-200 rounded-2xl text-slate-300 hover:border-primary/40 hover:text-primary/60 transition-all flex items-center justify-center gap-2 text-sm font-bold group"
+      >
         <LuPlus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-200" />
         Add Family Event
       </button>
@@ -211,24 +334,25 @@ const UpcomingSidebar = ({ events }: {
 // ─── Family Calendar ──────────────────────────────────────────────────────────
 
 export const FamilyCalendar = () => {
-  const today = new Date();
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
-  const [viewYear, setViewYear]   = useState(today.getFullYear());
-  const [events]                  = useState<CalendarEvent[]>(INITIAL_EVENTS);
-  const [selectedDay, setSelectedDay] = useState<{ day: number; events: CalendarEvent[] } | null>(null);
+  const { events, addEvent, removeEvent } = useFamilyStore();
+
+  const todayDate = new Date();
+  const [viewMonth, setViewMonth] = useState(todayDate.getMonth());
+  const [viewYear, setViewYear] = useState(todayDate.getFullYear());
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalDefaultDate, setModalDefaultDate] = useState<string | undefined>(undefined);
 
   // Build calendar grid
   const firstDayOfMonth = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
-  const daysInMonth     = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const cells: (number | null)[] = [
     ...Array(firstDayOfMonth).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
   // Pad to complete last row
   while (cells.length % 7 !== 0) cells.push(null);
-
-  const eventsForDay = (day: number) =>
-    events.filter(e => e.day === day && e.month === viewMonth && e.year === viewYear);
 
   const prevMonth = () => {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
@@ -240,6 +364,23 @@ export const FamilyCalendar = () => {
     if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
     else setViewMonth(m => m + 1);
     setSelectedDay(null);
+  };
+
+  const handleAddEventClick = (day?: number) => {
+    if (day) {
+      // Format YYYY-MM-DD
+      const mStr = String(viewMonth + 1).padStart(2, '0');
+      const dStr = String(day).padStart(2, '0');
+      setModalDefaultDate(`${viewYear}-${mStr}-${dStr}`);
+    } else {
+      setModalDefaultDate(undefined);
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSaveEvent = (data: { title: string; date: string; emoji: string }) => {
+    addEvent(data);
+    setIsModalOpen(false);
   };
 
   return (
@@ -310,19 +451,19 @@ export const FamilyCalendar = () => {
                 day={day}
                 isToday={
                   day !== null &&
-                  day === today.getDate() &&
-                  viewMonth === today.getMonth() &&
-                  viewYear === today.getFullYear()
+                  day === todayDate.getDate() &&
+                  viewMonth === todayDate.getMonth() &&
+                  viewYear === todayDate.getFullYear()
                 }
-                events={day !== null ? eventsForDay(day) : []}
-                onSelect={(d, evs) => setSelectedDay({ day: d, events: evs })}
+                events={day !== null ? getEventsForDay(events, viewYear, viewMonth, day) : []}
+                onSelect={(d) => setSelectedDay(d)}
               />
             ))}
           </motion.div>
 
           {/* Selected day panel (inline, below grid) */}
           <AnimatePresence>
-            {selectedDay && (
+            {selectedDay !== null && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
@@ -330,11 +471,13 @@ export const FamilyCalendar = () => {
                 className="overflow-hidden mt-4"
               >
                 <EventPanel
-                  day={selectedDay.day}
+                  day={selectedDay}
                   month={viewMonth}
                   year={viewYear}
-                  events={selectedDay.events}
+                  events={getEventsForDay(events, viewYear, viewMonth, selectedDay)}
                   onClose={() => setSelectedDay(null)}
+                  onAddEventClick={() => handleAddEventClick(selectedDay)}
+                  onRemoveEvent={removeEvent}
                 />
               </motion.div>
             )}
@@ -343,9 +486,19 @@ export const FamilyCalendar = () => {
 
         {/* Sidebar */}
         <div className="flex flex-col gap-4">
-          <UpcomingSidebar events={events} />
+          <UpcomingSidebar events={events} onAddEventClick={() => handleAddEventClick()} />
         </div>
       </div>
+
+      <AnimatePresence>
+        {isModalOpen && (
+          <EventModal
+            onClose={() => setIsModalOpen(false)}
+            onSave={handleSaveEvent}
+            defaultDate={modalDefaultDate}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

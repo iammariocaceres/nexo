@@ -37,6 +37,15 @@ export interface Reward {
   category: string;
 }
 
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  date: string; // YYYY-MM-DD
+  emoji: string;
+  color: string;
+  text_color: string;
+}
+
 export interface FamilyGroup {
   id: string;
   name: string;
@@ -50,6 +59,7 @@ interface FamilyState {
   members: Member[];
   tasks: Task[];
   rewards: Reward[];
+  events: CalendarEvent[];
   isLoading: boolean;
   hasFetchedOnce: boolean;
 
@@ -66,6 +76,9 @@ interface FamilyState {
   redeemReward: (rewardId: string, memberId: string) => void;
   addReward: (reward: Omit<Reward, 'id'>) => void;
   removeReward: (rewardId: string) => void;
+
+  addEvent: (event: Omit<CalendarEvent, 'id' | 'color' | 'text_color'>) => void;
+  removeEvent: (eventId: string) => void;
 
   addMember: (member: Omit<Member, 'id' | 'points'>) => void;
   updateMember: (memberId: string, updates: Partial<Member>) => void;
@@ -84,6 +97,7 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
   members: [],
   tasks: [],
   rewards: [],
+  events: [],
   isLoading: true,
   hasFetchedOnce: false,
 
@@ -136,11 +150,18 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
         .select('*')
         .eq('family_id', userId);
 
+      // Fetch Events
+      const { data: events } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .eq('family_id', userId);
+
       set({
         group: group || null,
         members: members?.map(m => ({ ...m, displayName: m.display_name, avatar_url: m.avatar_url })) || [],
         tasks: tasksWithStatus,
         rewards: rewards || [],
+        events: events || [],
         isLoading: false,
         hasFetchedOnce: true,
       });
@@ -321,6 +342,49 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
     set((state) => ({
       rewards: state.rewards.filter(r => r.id !== rewardId),
     }));
+  },
+
+  addEvent: async (event) => {
+    const state = get();
+    if (!state.group) return;
+
+    // Random pastel color logic
+    const COLORS = [
+      { color: 'bg-pink-100', text_color: 'text-pink-700' },
+      { color: 'bg-cyan-100', text_color: 'text-cyan-700' },
+      { color: 'bg-orange-100', text_color: 'text-orange-700' },
+      { color: 'bg-purple-100', text_color: 'text-purple-700' },
+      { color: 'bg-amber-100', text_color: 'text-amber-700' },
+      { color: 'bg-indigo-100', text_color: 'text-indigo-700' },
+      { color: 'bg-emerald-100', text_color: 'text-emerald-700' },
+      { color: 'bg-sky-100', text_color: 'text-sky-700' },
+    ];
+    const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+
+    const { data, error } = await supabase.from('calendar_events').insert({
+      family_id: state.group.id,
+      title: event.title,
+      date: event.date,
+      emoji: event.emoji,
+      color: randomColor.color,
+      text_color: randomColor.text_color,
+    }).select('*').single();
+
+    if (error || !data) {
+      console.error('Failed to add event', error);
+      return;
+    }
+
+    set({
+      events: [...state.events, data],
+    });
+  },
+
+  removeEvent: async (eventId) => {
+    set((state) => ({
+      events: state.events.filter(e => e.id !== eventId),
+    }));
+    await supabase.from('calendar_events').delete().eq('id', eventId);
   },
 
   addMember: async (member) => {
