@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
+import { PinGate } from './components/PinGate';
 
 // Lazy-loaded screens
 const Dashboard        = React.lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -31,7 +32,7 @@ export const AppRouter = () => (
       <Route path="/calendar"   element={wrap(FamilyCalendar)} />
       <Route path="/chores"     element={wrap(TaskBoard)} />
       <Route path="/rewards"    element={wrap(RewardsStore)} />
-      <Route path="/management" element={wrap(FamilyManagement)} />
+      <Route path="/management" element={<PinGate>{wrap(FamilyManagement)}</PinGate>} />
       <Route path="*"           element={<Navigate to="/dashboard" replace />} />
     </Routes>
   </BrowserRouter>

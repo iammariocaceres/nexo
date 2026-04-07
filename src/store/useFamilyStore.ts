@@ -40,6 +40,7 @@ export interface Reward {
 export interface FamilyGroup {
   id: string;
   name: string;
+  admin_pin: string;
 }
 
 // ─── Store Interface ──────────────────────────────────────────────────────────
@@ -67,6 +68,7 @@ interface FamilyState {
   removeReward: (rewardId: string) => void;
 
   addMember: (member: Omit<Member, 'id' | 'points'>) => void;
+  updateMember: (memberId: string, updates: Partial<Member>) => void;
   removeMember: (memberId: string) => void;
 
   // Helpers
@@ -225,10 +227,35 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
   },
 
   addTask: async (task) => {
-    // Not implemented fully here, just a mock for UI to keep working
-    set((state) => ({
-      tasks: [...state.tasks, { ...task, id: `t${Date.now()}`, completed: false }],
-    }));
+    const state = get();
+    if (!state.group) return;
+
+    // Supabase Insert taking advantage of the table triggers
+    const { data, error } = await supabase.from('tasks').insert({
+      family_id: state.group.id,
+      assigned_to: task.assignedTo,
+      title: task.title,
+      emoji: task.emoji,
+      points: task.points,
+      time_slot: task.timeSlot,
+    }).select('*').single();
+
+    if (error || !data) {
+      console.error('Failed to add task', error);
+      return;
+    }
+
+    set({
+      tasks: [...state.tasks, {
+        id: data.id,
+        title: data.title,
+        emoji: data.emoji,
+        points: data.points,
+        timeSlot: data.time_slot,
+        assignedTo: data.assigned_to,
+        completed: false, // brand new tasks are incomplete
+      }],
+    });
   },
 
   removeTask: async (taskId) => {
@@ -261,9 +288,33 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
   },
 
   addReward: async (reward) => {
-    set((state) => ({
-      rewards: [...state.rewards, { ...reward, id: `r${Date.now()}` }],
-    }));
+    const state = get();
+    if (!state.group) return;
+
+    const { data, error } = await supabase.from('rewards').insert({
+      family_id: state.group.id,
+      title: reward.title,
+      emoji: reward.emoji,
+      description: reward.description,
+      cost: reward.cost,
+      category: reward.category,
+    }).select('*').single();
+
+    if (error || !data) {
+      console.error('Failed to add reward', error);
+      return;
+    }
+
+    set({
+      rewards: [...state.rewards, {
+        id: data.id,
+        title: data.title,
+        emoji: data.emoji,
+        description: data.description,
+        cost: data.cost,
+        category: data.category,
+      }],
+    });
   },
 
   removeReward: async (rewardId) => {
@@ -273,16 +324,81 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
   },
 
   addMember: async (member) => {
+    const state = get();
+    if (!state.group) return;
+
+    const dbInsert = {
+      family_id: state.group.id,
+      name: member.name,
+      display_name: member.displayName,
+      role: member.role,
+      avatar_url: member.avatar_url,
+      color: member.color,
+      emoji: member.emoji,
+      points: 0
+    };
+
+    const { data, error } = await supabase.from('members').insert(dbInsert).select('*').single();
+
+    if (error || !data) {
+      console.error('Failed to add member', error);
+      return;
+    }
+
     set((state) => ({
-      members: [...state.members, { ...member, id: `m${Date.now()}`, points: 0 }],
+      members: [...state.members, { ...member, id: data.id, points: 0 }],
     }));
   },
 
+  updateMember: async (memberId, updates) => {
+    const state = get();
+    const existing = state.members.find(m => m.id === memberId);
+    if (!existing || !state.group) return;
+
+    // Safety check: Cannot demote the last admin
+    if (updates.role === 'member' && existing.role === 'admin') {
+      const admins = state.members.filter(m => m.role === 'admin');
+      if (admins.length <= 1) {
+        alert('You cannot demote the last admin.');
+        return;
+      }
+    }
+
+    // Optimistic UI Output
+    set({
+      members: state.members.map(m => m.id === memberId ? { ...m, ...updates } : m)
+    });
+
+    const dbUpdates: any = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.displayName !== undefined) dbUpdates.display_name = updates.displayName;
+    if (updates.role !== undefined) dbUpdates.role = updates.role;
+    if (updates.avatar_url !== undefined) dbUpdates.avatar_url = updates.avatar_url;
+    if (updates.color !== undefined) dbUpdates.color = updates.color;
+    if (updates.emoji !== undefined) dbUpdates.emoji = updates.emoji;
+
+    await supabase.from('members').update(dbUpdates).eq('id', memberId);
+  },
+
   removeMember: async (memberId) => {
+    const state = get();
+    const existing = state.members.find(m => m.id === memberId);
+    
+    // Safety check: Cannot delete the last admin
+    if (existing?.role === 'admin') {
+      const admins = state.members.filter(m => m.role === 'admin');
+      if (admins.length <= 1) {
+        alert('You cannot delete the last admin.');
+        return;
+      }
+    }
+
     set((state) => ({
       members: state.members.filter(m => m.id !== memberId),
       tasks: state.tasks.filter(t => t.assignedTo !== memberId),
     }));
+
+    await supabase.from('members').delete().eq('id', memberId);
   },
 
   getMemberById: (id) => get().members.find(m => m.id === id),

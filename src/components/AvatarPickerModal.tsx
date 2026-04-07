@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { LuX } from 'react-icons/lu';
+import { LuX, LuLink, LuCheck } from 'react-icons/lu';
 
 interface AvatarPickerModalProps {
   isOpen: boolean;
@@ -41,6 +42,8 @@ const PRESET_AVATARS = [
 ];
 
 export const AvatarPickerModal = ({ isOpen, onClose, onSelect, memberName }: AvatarPickerModalProps) => {
+  const [customUrl, setCustomUrl] = useState('');
+
   if (!isOpen) return null;
 
   return (
@@ -76,7 +79,40 @@ export const AvatarPickerModal = ({ isOpen, onClose, onSelect, memberName }: Ava
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto">
+        <div className="p-6 overflow-y-auto flex-1">
+          {/* Custom URL Input */}
+          <div className="mb-6 bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
+              <LuLink className="w-4 h-4 text-slate-400" />
+              Use Custom Image (URL)
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={customUrl}
+                onChange={(e) => setCustomUrl(e.target.value)}
+                placeholder="https://your-s3-bucket... / image.jpg"
+                className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+              <button
+                onClick={() => {
+                  if (customUrl.trim()) {
+                    onSelect(customUrl.trim());
+                    onClose();
+                  }
+                }}
+                disabled={!customUrl.trim()}
+                className="px-4 py-2 bg-slate-800 text-white rounded-xl font-bold text-sm hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1 transition-colors"
+              >
+                <LuCheck className="w-4 h-4" /> Apply
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Or pick a preset</h3>
+          </div>
+
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
             {PRESET_AVATARS.map((url, idx) => (
               <motion.button
