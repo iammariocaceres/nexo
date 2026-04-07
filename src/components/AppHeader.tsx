@@ -56,7 +56,7 @@ export const AppHeader = () => {
         {/* Greeting */}
         <div className="hidden md:block">
           <p className="font-black text-slate-800 text-sm leading-tight">
-            {greeting.emoji} {greeting.text}, <span className="text-primary">{group.name.split(' ')[1] || group.name}!</span>
+            {greeting.emoji} {greeting.text}, <span className="text-primary">{group?.name?.split(' ')[1] || group?.name || 'Familia'}!</span>
           </p>
           <p className="text-xs text-slate-400 font-medium">{today}</p>
         </div>
@@ -64,7 +64,7 @@ export const AppHeader = () => {
 
       {/* Center: Family name on tablet */}
       <div className="hidden lg:flex flex-col items-center">
-        <p className="font-black text-slate-700 text-sm">{group.name}</p>
+        <p className="font-black text-slate-700 text-sm">{group?.name || 'Familia'}</p>
         <div className="flex items-center gap-1.5 mt-0.5">
           <div className="h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden">
             <motion.div

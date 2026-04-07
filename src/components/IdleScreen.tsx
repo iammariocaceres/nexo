@@ -221,7 +221,7 @@ export const IdleScreen = ({ onWake }: IdleScreenProps) => {
           </h1>
           <h1 className="font-black leading-tight"
             style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: '#00CED1' }}>
-            {group.name}!
+            {group?.name || 'Familia'}!
           </h1>
         </motion.div>
 

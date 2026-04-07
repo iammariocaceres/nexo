@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { supabase } from './lib/supabaseClient';
 import { useAuthStore } from './store/useAuthStore';
+import { useFamilyStore } from './store/useFamilyStore';
 import { LoginScreen } from './components/LoginScreen';
 import { AppRouter } from './AppRouter';
+import { SetupWizard, type SetupData } from './components/SetupWizard';
 
 // ─── Splash / loading ────────────────────────────────────────────────────────
 
@@ -45,17 +47,18 @@ const SplashScreen = () => (
 
 export default function App() {
   const { session, setSession } = useAuthStore();
+  const { members, fetchFamilyData, setupFamily, hasFetchedOnce } = useFamilyStore();
+  
   // `initializing` = true until Supabase resolves the real session for the first time
   const [initializing, setInitializing] = useState(true);
 
+  // Sync Auth Session
   useEffect(() => {
-    // Resolve the real session from Supabase (source of truth)
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setInitializing(false);
     });
 
-    // Keep in sync for token refresh, sign-out from another tab, etc.
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
     });
@@ -63,12 +66,29 @@ export default function App() {
     return () => listener.subscription.unsubscribe();
   }, [setSession]);
 
+  // Fetch Family Data when session changes
+  useEffect(() => {
+    if (session) {
+      fetchFamilyData(session.user.id);
+    }
+  }, [session, fetchFamilyData]);
+
+  const handleSetupComplete = async (data: SetupData) => {
+    if (session) {
+      await setupFamily(session.user.id, data);
+    }
+  };
+
   return (
     <AnimatePresence mode="wait">
-      {initializing ? (
+      {initializing || (session && !hasFetchedOnce) ? (
         <SplashScreen key="splash" />
       ) : session ? (
-        <AppRouter key="app" />
+        members.length === 0 ? (
+          <SetupWizard key="setup" onComplete={handleSetupComplete} />
+        ) : (
+          <AppRouter key="app" />
+        )
       ) : (
         <LoginScreen key="login" />
       )}

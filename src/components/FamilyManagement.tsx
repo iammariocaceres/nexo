@@ -302,7 +302,7 @@ export const FamilyManagement = () => {
         </div>
         <div>
           <h1 className="text-2xl font-black text-slate-800 leading-tight">Family Admin Panel</h1>
-          <p className="text-sm text-slate-500 font-medium">{group.name} · {admins.map(a => a.name).join(' & ')} manage here ⚙️</p>
+          <p className="text-sm text-slate-500 font-medium">{group?.name || 'Familia'} · {admins.map(a => a.name).join(' & ')} manage here ⚙️</p>
         </div>
       </div>
 
