@@ -1,12 +1,20 @@
 import React from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { AppHeader } from './AppHeader';
 import { BottomNavBar } from './BottomNavBar';
+import { IdleScreen } from './IdleScreen';
+import { useIdleTimer } from '../hooks/useIdleTimer';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
+// 2 minutes of inactivity triggers the idle screen
+const IDLE_TIMEOUT_MS = 1 * 60 * 1000;
+
 export const Layout = ({ children }: LayoutProps) => {
+  const isIdle = useIdleTimer(IDLE_TIMEOUT_MS);
+
   return (
     <div className="flex flex-col h-screen bg-nexo-light font-plus-jakarta overflow-hidden">
       {/* Compact top header */}
@@ -21,10 +29,21 @@ export const Layout = ({ children }: LayoutProps) => {
       <BottomNavBar />
 
       {/* Decorative background blobs */}
-      <div className="pointer-events-none fixed top-0 right-0 -z-0 w-96 h-96 bg-cyan-100/30 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3" />
-      <div className="pointer-events-none fixed bottom-0 left-0 -z-0 w-80 h-80 bg-amber-50/40 rounded-full blur-[80px] translate-y-1/3 -translate-x-1/4" />
-      <div className="pointer-events-none fixed bottom-1/2 right-1/4 -z-0 w-64 h-64 bg-pink-50/30 rounded-full blur-[80px]" />
+      <div className="pointer-events-none fixed top-0 right-0 z-0 w-96 h-96 bg-cyan-100/30 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3" />
+      <div className="pointer-events-none fixed bottom-0 left-0 z-0 w-80 h-80 bg-amber-50/40 rounded-full blur-[80px] translate-y-1/3 -translate-x-1/4" />
+      <div className="pointer-events-none fixed bottom-1/2 right-1/4 z-0 w-64 h-64 bg-pink-50/30 rounded-full blur-[80px]" />
+
+      {/* Idle / screensaver overlay */}
+      <AnimatePresence>
+        {isIdle && (
+          <IdleScreen onWake={() => {
+            // Firing a synthetic event wakes the idle timer automatically
+            window.dispatchEvent(new MouseEvent('mousemove'));
+          }} />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
+
 

@@ -4,7 +4,7 @@ import {
   LuUsers, LuShield, LuUser, LuStar, LuTrash2,
   LuSquareCheck, LuTrophy, LuPlus, LuX
 } from 'react-icons/lu';
-import { useFamilyStore, type Member, type TimeSlot } from '../store/useFamilyStore';
+import { useFamilyStore, type TimeSlot } from '../store/useFamilyStore';
 
 // ─── Section Header ───────────────────────────────────────────────────────────
 

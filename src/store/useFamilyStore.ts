@@ -220,7 +220,7 @@ export const useFamilyStore = create<FamilyState>()(
       getMemberTasks: (memberId) => get().tasks.filter(t => t.assignedTo === memberId),
 
       getTotalPointsEarnedToday: () => {
-        const { tasks, members } = get();
+        const { tasks } = get();
         return tasks
           .filter(t => t.completed)
           .reduce((sum, t) => sum + t.points, 0);

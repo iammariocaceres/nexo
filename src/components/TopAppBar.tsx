@@ -1,4 +1,3 @@
-import React from 'react';
 import { LuBell, LuSearch, LuStar, LuCloudSun } from 'react-icons/lu';
 
 export const TopAppBar = () => {

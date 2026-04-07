@@ -1,5 +1,4 @@
 import React from 'react';
-import { useFamilyStore } from '../store/useFamilyStore';
 import { useNavigate } from 'react-router-dom';
 import {
   LuLayoutDashboard,
@@ -35,7 +34,7 @@ const NavItem = ({ icon: Icon, label, isActive, onClick }: NavItemProps) => (
 );
 
 export const SideNavBar = () => {
-  const { activeProfile, logout } = useFamilyStore();
+  // Note: this component is legacy — app uses BottomNavBar instead
   const [activeTab, setActiveTab] = React.useState('Dashboard');
   const navigate = useNavigate();
   const navItems = [
@@ -80,31 +79,31 @@ export const SideNavBar = () => {
         </div>
       </nav>
 
-      {/* Footer / Profile */}
+      {/* Footer / Profile — legacy component, no longer used */}
       <div className="mt-auto pt-8 border-t border-slate-100">
         <div className="px-6 mb-6">
           <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
             <img
-              src={activeProfile?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix'}
+              src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
               alt="Profile"
               className="w-10 h-10 rounded-full border-2 border-primary/20"
             />
             <div className="overflow-hidden">
-              <p className="font-bold text-slate-800 truncate">{activeProfile?.name || 'Usuario'}</p>
-              <p className="text-xs text-slate-500 capitalize">{activeProfile?.role || 'Miembro'}</p>
+              <p className="font-bold text-slate-800 truncate">Usuario</p>
+              <p className="text-xs text-slate-500 capitalize">Miembro</p>
             </div>
           </div>
         </div>
 
         <div className="flex flex-col gap-1">
           <button className="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-slate-600 transition-colors font-medium text-sm w-full"
-            onClick={() => { setActiveTab('Ajustes de Familia'), navigate('/management') }}
+            onClick={() => { setActiveTab('Ajustes de Familia'); navigate('/management'); }}
           >
             <LuSettings className="w-4 h-4" />
             <span>Ajustes de Familia</span>
           </button>
           <button
-            onClick={logout}
+            onClick={() => {/* logout not implemented */}}
             className="flex items-center gap-3 px-6 py-3 text-rose-400 hover:text-rose-600 transition-colors font-medium text-sm w-full"
           >
             <LuLogOut className="w-4 h-4" />
