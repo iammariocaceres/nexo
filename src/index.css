@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+@theme {
+    /* Nexo Color Palette */
+    --color-primary: #00CED1;
+    --color-primary-dark: #008B8B;
+    --color-accent: #FFD700;
+    --color-success: #32CD32;
+    --color-nexo-light: #F0FDFA;
+    --color-nexo-dark: #0F172A;
+    --color-mario: #3B82F6;
+    --color-yoris: #8B5CF6;
+    --color-diana: #F472B6;
+
+    /* Typography */
+    --font-plus-jakarta: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+    /* Border Radius */
+    --radius-nexo: 2rem;
+    --radius-nexo-lg: 3rem;
+}
+
+@layer base {
+    *, *::before, *::after {
+        /* Removes the 300ms tap delay on mobile/tablet */
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    html {
+        /* Prevent zoom on input focus in iOS */
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+        @apply font-plus-jakarta bg-nexo-light text-slate-900 antialiased;
+        /* Safe-area for notch/home bar */
+        padding-bottom: env(safe-area-inset-bottom);
+        overflow: hidden;
+    }
+
+    input, textarea, select {
+        /* Prevent iOS zoom on input focus (font-size must be >= 16px) */
+        font-size: 16px;
+    }
+}
+
+@layer components {
+    .glass-card {
+        @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
+    }
+
+    .btn-primary {
+        @apply bg-primary text-white px-6 py-3 rounded-full font-bold transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/30;
+    }
+
+    .safe-bottom {
+        padding-bottom: calc(env(safe-area-inset-bottom) + 4rem);
+    }
+
+    /* Fun sparkle animation for task completions */
+    @keyframes sparkle {
+        0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+        50% { opacity: 1; transform: scale(1) rotate(180deg); }
+    }
+
+    @keyframes float-up {
+        0% { opacity: 1; transform: translateY(0) scale(1); }
+        100% { opacity: 0; transform: translateY(-60px) scale(1.5); }
+    }
+
+    .sparkle { animation: sparkle 0.6s ease-in-out forwards; }
+    .float-up { animation: float-up 0.8s ease-out forwards; }
+
+    @keyframes bounce-in {
+        0% { transform: scale(0.3); opacity: 0; }
+        50% { transform: scale(1.05); }
+        70% { transform: scale(0.9); }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    .bounce-in { animation: bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards; }
+}
