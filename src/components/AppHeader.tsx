@@ -1,7 +1,8 @@
 
 import { motion } from 'framer-motion';
-import { LuStar, LuZap } from 'react-icons/lu';
+import { LuStar, LuZap, LuLogOut } from 'react-icons/lu';
 import { useFamilyStore } from '../store/useFamilyStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 const GREETINGS = {
   morning: { text: 'Good morning', emoji: '☀️' },
@@ -18,6 +19,7 @@ function getGreeting() {
 
 export const AppHeader = () => {
   const { group, members, tasks } = useFamilyStore();
+  const { signOut } = useAuthStore();
 
   const greeting = getGreeting();
   const today = new Date().toLocaleDateString('en-US', {
@@ -116,7 +118,18 @@ export const AppHeader = () => {
           </span>
           <span className="text-emerald-600 text-xs font-medium hidden lg:inline">family XP</span>
         </motion.div>
+
+        {/* Sign out */}
+        <button
+          onClick={() => signOut()}
+          title="Sign out"
+          className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all border border-transparent hover:border-rose-100"
+        >
+          <LuLogOut className="w-4 h-4" />
+          <span className="text-xs font-bold hidden lg:inline">Sign out</span>
+        </button>
       </div>
     </header>
   );
 };
+
