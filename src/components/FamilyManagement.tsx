@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LuUsers, LuShield, LuUser, LuStar, LuTrash2,
-  LuSquareCheck, LuTrophy, LuPlus, LuX, LuPencil, LuPencilLine
+  LuSquareCheck, LuTrophy, LuPlus, LuX, LuPencilLine
 } from 'react-icons/lu';
 import { useFamilyStore, type TimeSlot, type Member } from '../store/useFamilyStore';
 
