@@ -45,6 +45,8 @@ const SplashScreen = () => (
 
 // ─── App root ─────────────────────────────────────────────────────────────────
 
+import { UpdatePrompt } from './components/UpdatePrompt';
+
 export default function App() {
   const { session, setSession } = useAuthStore();
   const { members, fetchFamilyData, setupFamily, hasFetchedOnce } = useFamilyStore();
@@ -80,18 +82,21 @@ export default function App() {
   };
 
   return (
-    <AnimatePresence mode="wait">
-      {initializing || (session && !hasFetchedOnce) ? (
-        <SplashScreen key="splash" />
-      ) : session ? (
-        members.length === 0 ? (
-          <SetupWizard key="setup" onComplete={handleSetupComplete} />
+    <>
+      <UpdatePrompt />
+      <AnimatePresence mode="wait">
+        {initializing || (session && !hasFetchedOnce) ? (
+          <SplashScreen key="splash" />
+        ) : session ? (
+          members.length === 0 ? (
+            <SetupWizard key="setup" onComplete={handleSetupComplete} />
+          ) : (
+            <AppRouter key="app" />
+          )
         ) : (
-          <AppRouter key="app" />
-        )
-      ) : (
-        <LoginScreen key="login" />
-      )}
-    </AnimatePresence>
+          <LoginScreen key="login" />
+        )}
+      </AnimatePresence>
+    </>
   );
 }
