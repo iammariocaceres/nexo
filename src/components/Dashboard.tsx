@@ -170,10 +170,16 @@ const UpcomingEvents = () => {
       const evDate = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
       return evDate >= today;
     })
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .sort((a, b) => {
+      const [yA, mA, dA] = a.date.split('-');
+      const [yB, mB, dB] = b.date.split('-');
+      return new Date(parseInt(yA, 10), parseInt(mA, 10) - 1, parseInt(dA, 10)).getTime() - 
+             new Date(parseInt(yB, 10), parseInt(mB, 10) - 1, parseInt(dB, 10)).getTime();
+    })
     .slice(0, 4);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   return (
     <div className="bg-white/80 backdrop-blur-md rounded-3xl p-5 border border-white/40 shadow-lg">
@@ -186,7 +192,10 @@ const UpcomingEvents = () => {
       ) : (
         <div className="flex flex-col gap-2.5">
           {upcoming.map(ev => {
-            const diffDays = Math.round((new Date(ev.date).getTime() - new Date(todayStr).getTime()) / (1000 * 60 * 60 * 24));
+            const [y, m, d] = ev.date.split('-');
+            const evDate = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+            const diffDays = Math.round((evDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            
             const dateLabel = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} days`;
             
             return (

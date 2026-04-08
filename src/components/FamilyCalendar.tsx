@@ -287,11 +287,16 @@ const UpcomingSidebar = ({ events, onAddEventClick }: {
         const evDate = new Date(d.year, d.month, d.day);
         return evDate >= today;
       })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .sort((a, b) => {
+        const d1 = parseDateString(a.date);
+        const d2 = parseDateString(b.date);
+        return new Date(d1.year, d1.month, d1.day).getTime() - new Date(d2.year, d2.month, d2.day).getTime();
+      })
       .slice(0, 6);
   }, [events]);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   return (
     <div className="bg-white/80 backdrop-blur-md rounded-3xl p-5 border border-white/40 shadow-lg">
@@ -305,10 +310,11 @@ const UpcomingSidebar = ({ events, onAddEventClick }: {
       ) : (
         <div className="flex flex-col gap-2.5">
           {upcoming.map(ev => {
-            const dStr = ev.date;
-            const diffDays = Math.round((new Date(dStr).getTime() - new Date(todayStr).getTime()) / (1000 * 60 * 60 * 24));
-            const dateLabel = diffDays === 0 ? 'Today!' : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} days`;
             const d = parseDateString(ev.date);
+            const evDate = new Date(d.year, d.month, d.day);
+            const diffDays = Math.round((evDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            
+            const dateLabel = diffDays === 0 ? 'Today!' : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} days`;
 
             return (
               <motion.div
