@@ -4,7 +4,9 @@ import {
   LuUsers, LuShield, LuUser, LuStar, LuTrash2,
   LuSquareCheck, LuTrophy, LuPlus, LuX, LuPencilLine
 } from 'react-icons/lu';
-import { useFamilyStore, type TimeSlot, type Member } from '../store/useFamilyStore';
+import { useFamilyStore, type TimeSlot, type Member, type Task } from '../store/useFamilyStore';
+
+const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 // ─── Section Header ───────────────────────────────────────────────────────────
 
@@ -269,19 +271,50 @@ const MembersPanel = () => {
 // ─── Tasks Panel ──────────────────────────────────────────────────────────────
 
 const TasksPanel = () => {
-  const { tasks, members, removeTask } = useFamilyStore();
+  const { tasks, members, removeTask, addTask, updateTask } = useFamilyStore();
   const [confirm, setConfirm] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const { addTask } = useFamilyStore();
-
-  const [form, setForm] = useState({ title: '', emoji: '✅', points: 10, timeSlot: 'morning' as TimeSlot, assignedTo: members[0]?.id ?? '' });
+  
+  const [form, setForm] = useState({ title: '', emoji: '✅', points: 10, timeSlot: 'morning' as TimeSlot, assignedTo: members[0]?.id ?? '', days: ALL_DAYS });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Task>>({});
 
   const handleAdd = () => {
     if (!form.title.trim()) return;
     addTask(form);
     setShowForm(false);
-    setForm({ title: '', emoji: '✅', points: 10, timeSlot: 'morning', assignedTo: members[0]?.id ?? '' });
+    setForm({ title: '', emoji: '✅', points: 10, timeSlot: 'morning', assignedTo: members[0]?.id ?? '', days: ALL_DAYS });
   };
+
+  const handleSaveEdit = (taskId: string) => {
+    updateTask(taskId, editForm);
+    setEditingId(null);
+  };
+
+  const toggleDay = (day: string, currentDays: string[], setter: (d: string[]) => void) => {
+    if (currentDays.includes(day)) {
+      setter(currentDays.filter(d => d !== day));
+    } else {
+      setter([...currentDays, day].sort((a, b) => ALL_DAYS.indexOf(a) - ALL_DAYS.indexOf(b)));
+    }
+  };
+
+  const DayPicker = ({ selected, onChange }: { selected: string[]; onChange: (d: string[]) => void }) => (
+    <div className="flex gap-1 font-bold text-[10px]">
+      {ALL_DAYS.map(day => {
+        const isActive = selected.includes(day);
+        return (
+          <button
+            key={day}
+            onClick={() => toggleDay(day, selected, onChange)}
+            className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${isActive ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+          >
+            {day.charAt(0)}
+          </button>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div className="bg-white/80 backdrop-blur-md rounded-3xl p-5 border border-white/40 shadow-lg">
@@ -350,12 +383,15 @@ const TasksPanel = () => {
                 <option value="afternoon">🌤️ Afternoon</option>
                 <option value="night">🌙 Night</option>
               </select>
-              <button
-                onClick={handleAdd}
-                className="px-4 py-2 bg-primary text-white rounded-xl font-black text-sm hover:scale-105 active:scale-95 transition-transform shadow-md"
-              >
-                Add Task ✅
-              </button>
+              <div className="col-span-2 flex items-center justify-between mt-1">
+                <DayPicker selected={form.days} onChange={d => setForm(f => ({ ...f, days: d }))} />
+                <button
+                  onClick={handleAdd}
+                  className="px-4 py-2 bg-primary text-white rounded-xl font-black text-sm hover:scale-105 active:scale-95 transition-transform shadow-md"
+                >
+                  Add Task ✅
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
@@ -365,28 +401,60 @@ const TasksPanel = () => {
       <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
         {tasks.map(task => {
           const member = members.find(m => m.id === task.assignedTo);
+          const isEditing = editingId === task.id;
+
           return (
-            <motion.div key={task.id} layout className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-              <span className="text-xl">{task.emoji}</span>
-              <div className="flex-1 min-w-0">
-                <p className={`font-bold text-sm ${task.completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>{task.title}</p>
-                <p className="text-[10px] text-slate-400 font-medium">
-                  {member?.name} · {task.timeSlot} · +{task.points} XP
-                  {task.completed && ' · ✅ Completed'}
-                </p>
-              </div>
-              <AnimatePresence mode="wait">
-                {confirm === task.id ? (
-                  <motion.div key="confirm" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-1.5">
-                    <button onClick={() => { removeTask(task.id); setConfirm(null); }} className="px-2 py-1 bg-rose-500 text-white rounded-lg text-[10px] font-black">Del</button>
-                    <button onClick={() => setConfirm(null)} className="p-1 hover:bg-slate-200 rounded-lg"><LuX className="w-3 h-3 text-slate-500" /></button>
+            <motion.div key={task.id} layout className={`flex items-center gap-3 p-3 bg-slate-50 rounded-xl border ${isEditing ? 'border-primary shadow-sm' : 'border-slate-100'}`}>
+              {isEditing ? (
+                <div className="flex-1 flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <input className="w-12 text-center text-xl rounded-lg border px-1" value={editForm.emoji ?? task.emoji} onChange={e => setEditForm(f => ({ ...f, emoji: e.target.value }))} maxLength={2} />
+                    <input className="flex-1 px-2 text-sm rounded-lg border font-bold" value={editForm.title ?? task.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} />
+                    <input type="number" className="w-16 text-sm rounded-lg border font-bold text-center" value={editForm.points ?? task.points} onChange={e => setEditForm(f => ({ ...f, points: Number(e.target.value) }))} min={1} />
+                  </div>
+                  <div className="flex gap-2 text-[10px] font-bold">
+                    <select className="flex-1 rounded-lg border bg-white px-2 py-1" value={editForm.assignedTo ?? task.assignedTo} onChange={e => setEditForm(f => ({ ...f, assignedTo: e.target.value }))}>
+                      {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                    <select className="flex-1 rounded-lg border bg-white px-2 py-1" value={editForm.timeSlot ?? task.timeSlot} onChange={e => setEditForm(f => ({ ...f, timeSlot: e.target.value as TimeSlot }))}>
+                      <option value="morning">Morning</option>
+                      <option value="afternoon">Afternoon</option>
+                      <option value="night">Night</option>
+                    </select>
+                  </div>
+                  <DayPicker selected={editForm.days ?? task.days} onChange={d => setEditForm(f => ({ ...f, days: d }))} />
+                </div>
+              ) : (
+                <>
+                  <span className="text-xl shrink-0">{task.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-bold text-sm leading-tight ${task.completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>{task.title}</p>
+                    <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                      {member?.name} · {task.timeSlot} · +{task.points} XP · {task.days.length === 7 ? 'Every day' : task.days.join(', ')}
+                      {task.completed && ' · ✅ Done'}
+                    </p>
+                  </div>
+                </>
+              )}
+              
+              <div className="flex gap-1 shrink-0 flex-col sm:flex-row">
+                {isEditing ? (
+                  <>
+                    <button onClick={() => handleSaveEdit(task.id)} className="p-2 bg-primary text-white rounded-lg"><LuSquareCheck className="w-4 h-4" /></button>
+                    <button onClick={() => setEditingId(null)} className="p-2 bg-slate-200 text-slate-600 rounded-lg"><LuX className="w-4 h-4" /></button>
+                  </>
+                ) : confirm === task.id ? (
+                  <motion.div key="confirm" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-1.5 flex-col sm:flex-row">
+                    <button onClick={() => { removeTask(task.id); setConfirm(null); }} className="px-2 py-1.5 bg-rose-500 text-white rounded-lg text-xs font-black">Del</button>
+                    <button onClick={() => setConfirm(null)} className="p-1.5 hover:bg-slate-200 rounded-lg"><LuX className="w-3.5 h-3.5 text-slate-500" /></button>
                   </motion.div>
                 ) : (
-                  <motion.button key="delete" onClick={() => setConfirm(task.id)} className="p-1.5 text-slate-300 hover:text-rose-400 transition-colors">
-                    <LuTrash2 className="w-3.5 h-3.5" />
-                  </motion.button>
+                  <>
+                    <button onClick={() => { setEditingId(task.id); setEditForm({}); }} className="p-1.5 text-slate-400 hover:text-primary transition-colors"><LuPencilLine className="w-4 h-4" /></button>
+                    <button onClick={() => setConfirm(task.id)} className="p-1.5 text-slate-300 hover:text-rose-400 transition-colors"><LuTrash2 className="w-4 h-4" /></button>
+                  </>
                 )}
-              </AnimatePresence>
+              </div>
             </motion.div>
           );
         })}

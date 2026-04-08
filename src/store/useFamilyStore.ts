@@ -26,6 +26,7 @@ export interface Task {
   completed: boolean; // Virtual property, calculated from task_completions
   timeSlot: TimeSlot;
   assignedTo: string;
+  days: string[];
 }
 
 export interface Reward {
@@ -72,6 +73,7 @@ interface FamilyState {
   completeTask: (taskId: string) => void;
   uncompleteTask: (taskId: string) => void;
   addTask: (task: Omit<Task, 'id' | 'completed'>) => void;
+  updateTask: (taskId: string, updates: Partial<Task>) => void;
   removeTask: (taskId: string) => void;
 
   redeemReward: (rewardId: string, memberId: string) => void;
@@ -142,6 +144,7 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
         points: t.points,
         timeSlot: t.time_slot,
         assignedTo: t.assigned_to,
+        days: t.days_of_week || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
         completed: completedTaskIds.has(t.id),
       }));
 
@@ -260,6 +263,7 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
       emoji: task.emoji,
       points: task.points,
       time_slot: task.timeSlot,
+      days_of_week: task.days,
     }).select('*').single();
 
     if (error || !data) {
@@ -275,9 +279,30 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
         points: data.points,
         timeSlot: data.time_slot,
         assignedTo: data.assigned_to,
+        days: data.days_of_week || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
         completed: false, // brand new tasks are incomplete
       }],
     });
+  },
+
+  updateTask: async (taskId, updates) => {
+    const state = get();
+    if (!state.group) return;
+
+    // Optimistic cache
+    set({
+      tasks: state.tasks.map(t => t.id === taskId ? { ...t, ...updates } : t)
+    });
+
+    const dbUpdates: any = {};
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    if (updates.emoji !== undefined) dbUpdates.emoji = updates.emoji;
+    if (updates.points !== undefined) dbUpdates.points = updates.points;
+    if (updates.timeSlot !== undefined) dbUpdates.time_slot = updates.timeSlot;
+    if (updates.assignedTo !== undefined) dbUpdates.assigned_to = updates.assignedTo;
+    if (updates.days !== undefined) dbUpdates.days_of_week = updates.days;
+
+    await supabase.from('tasks').update(dbUpdates).eq('id', taskId);
   },
 
   removeTask: async (taskId) => {

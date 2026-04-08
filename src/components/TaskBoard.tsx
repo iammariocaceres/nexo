@@ -185,7 +185,11 @@ interface MemberColumnProps {
 
 const MemberColumn = ({ member, onTaskTap }: MemberColumnProps) => {
   const { tasks } = useFamilyStore();
-  const memberTasks = tasks.filter(t => t.assignedTo === member.id);
+  
+  const JS_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const currentDay = JS_DAYS[new Date().getDay()];
+  
+  const memberTasks = tasks.filter(t => t.assignedTo === member.id && t.days.includes(currentDay));
   const completedCount = memberTasks.filter(t => t.completed).length;
   const isAllDone = completedCount === memberTasks.length && memberTasks.length > 0;
 

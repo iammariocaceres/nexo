@@ -6,7 +6,10 @@ import { useFamilyStore, type Member } from '../store/useFamilyStore';
 
 const MemberCard = ({ member }: { member: Member }) => {
   const { tasks } = useFamilyStore();
-  const memberTasks = tasks.filter(t => t.assignedTo === member.id);
+  const JS_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const currentDay = JS_DAYS[new Date().getDay()];
+  
+  const memberTasks = tasks.filter(t => t.assignedTo === member.id && t.days.includes(currentDay));
   const completed = memberTasks.filter(t => t.completed).length;
   const total = memberTasks.length;
   const pct = total > 0 ? (completed / total) * 100 : 0;
@@ -84,10 +87,13 @@ const MemberCard = ({ member }: { member: Member }) => {
 
 const Leaderboard = () => {
   const { members, tasks } = useFamilyStore();
+  const JS_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const currentDay = JS_DAYS[new Date().getDay()];
+
   const ranked = [...members]
     .map(m => ({
       ...m,
-      todayXP: tasks.filter(t => t.assignedTo === m.id && t.completed).reduce((s, t) => s + t.points, 0),
+      todayXP: tasks.filter(t => t.assignedTo === m.id && t.days.includes(currentDay) && t.completed).reduce((s, t) => s + t.points, 0),
     }))
     .sort((a, b) => b.todayXP - a.todayXP);
   const medals = ['🥇', '🥈', '🥉'];
@@ -130,9 +136,13 @@ const Leaderboard = () => {
 
 const QuickStats = () => {
   const { tasks } = useFamilyStore();
-  const totalCompleted = tasks.filter(t => t.completed).length;
-  const totalTasks = tasks.length;
-  const totalEarned = tasks.filter(t => t.completed).reduce((s, t) => s + t.points, 0);
+  const JS_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const currentDay = JS_DAYS[new Date().getDay()];
+  const todaysTasks = tasks.filter(t => t.days.includes(currentDay));
+
+  const totalCompleted = todaysTasks.filter(t => t.completed).length;
+  const totalTasks = todaysTasks.length;
+  const totalEarned = todaysTasks.filter(t => t.completed).reduce((s, t) => s + t.points, 0);
 
   return (
     <div className="grid grid-cols-3 gap-3">
