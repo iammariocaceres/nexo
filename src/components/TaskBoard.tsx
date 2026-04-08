@@ -5,6 +5,7 @@ import {
   LuCircleCheck, LuCircle, LuStar, LuPlus, LuPartyPopper
 } from 'react-icons/lu';
 import { useFamilyStore, type Task, type Member, type TimeSlot } from '../store/useFamilyStore';
+import { useEffect } from 'react';
 
 // ─── Completion Modal ─────────────────────────────────────────────────────────
 
@@ -115,8 +116,12 @@ interface TaskCardProps {
 const TaskCard = ({ task, memberColor, onTap }: TaskCardProps) => {
   const [justCompleted, setJustCompleted] = useState(false);
 
+  // Dynamic daily completion check
+  const todayStr = new Date().toDateString();
+  const isCompleted = !!(task.completedAt && new Date(task.completedAt).toDateString() === todayStr);
+
   const handleTap = () => {
-    if (task.completed) return;
+    if (isCompleted) return;
     setJustCompleted(true);
     setTimeout(() => setJustCompleted(false), 600);
     onTap(task);
@@ -125,23 +130,23 @@ const TaskCard = ({ task, memberColor, onTap }: TaskCardProps) => {
   return (
     <motion.div
       layout
-      whileTap={!task.completed ? { scale: 0.97 } : {}}
+      whileTap={!isCompleted ? { scale: 0.97 } : {}}
       onClick={handleTap}
       className={`
         relative group flex items-center gap-3 p-3.5 mb-2.5 rounded-2xl border-2 transition-all
-        ${task.completed
+        ${isCompleted
           ? 'bg-slate-50 border-slate-100 opacity-70'
           : 'bg-white border-slate-100 cursor-pointer hover:shadow-md active:scale-[0.98]'
         }
       `}
-      style={!task.completed ? { borderColor: 'transparent' } : {}}
+      style={!isCompleted ? { borderColor: 'transparent' } : {}}
     >
       {/* Task emoji */}
-      <span className={`text-2xl select-none ${task.completed ? 'grayscale' : ''}`}>{task.emoji}</span>
+      <span className={`text-2xl select-none ${isCompleted ? 'grayscale' : ''}`}>{task.emoji}</span>
 
       {/* Task info */}
       <div className="flex-1 min-w-0">
-        <p className={`font-bold text-sm leading-tight ${task.completed ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+        <p className={`font-bold text-sm leading-tight ${isCompleted ? 'line-through text-slate-400' : 'text-slate-800'}`}>
           {task.title}
         </p>
         <div className="flex items-center gap-1 mt-0.5">
@@ -155,7 +160,7 @@ const TaskCard = ({ task, memberColor, onTap }: TaskCardProps) => {
         animate={justCompleted ? { scale: [1, 1.4, 1], rotate: [0, 10, -10, 0] } : {}}
         className="shrink-0 w-8 h-8 flex items-center justify-center"
       >
-        {task.completed ? (
+        {isCompleted ? (
           <LuCircleCheck className="w-7 h-7 text-emerald-500 fill-emerald-100" />
         ) : (
           <LuCircle
@@ -166,7 +171,7 @@ const TaskCard = ({ task, memberColor, onTap }: TaskCardProps) => {
       </motion.div>
 
       {/* Hover glow effect for incomplete tasks */}
-      {!task.completed && (
+      {!isCompleted && (
         <div
           className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border-2"
           style={{ borderColor: memberColor }}
@@ -188,9 +193,10 @@ const MemberColumn = ({ member, onTaskTap }: MemberColumnProps) => {
   
   const JS_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const currentDay = JS_DAYS[new Date().getDay()];
+  const todayStr = new Date().toDateString();
   
   const memberTasks = tasks.filter(t => t.assignedTo === member.id && t.days.includes(currentDay));
-  const completedCount = memberTasks.filter(t => t.completed).length;
+  const completedCount = memberTasks.filter(t => !!(t.completedAt && new Date(t.completedAt).toDateString() === todayStr)).length;
   const isAllDone = completedCount === memberTasks.length && memberTasks.length > 0;
 
   return (
@@ -277,6 +283,13 @@ export const TaskBoard = () => {
   const [pendingTask, setPendingTask] = useState<{ task: Task; member: Member } | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [confettiColor, setConfettiColor] = useState('#00CED1');
+  const [, setTick] = useState(0);
+
+  // Force re-render every minute so tasks naturally "reset" right at midnight
+  useEffect(() => {
+    const timer = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleTaskTap = (task: Task, member: Member) => {
     setPendingTask({ task, member });

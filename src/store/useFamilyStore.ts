@@ -23,7 +23,7 @@ export interface Task {
   title: string;
   emoji: string;
   points: number;
-  completed: boolean; // Virtual property, calculated from task_completions
+  completedAt?: string; // Reset completed status daily using timestamp
   timeSlot: TimeSlot;
   assignedTo: string;
   days: string[];
@@ -131,15 +131,23 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
         .select('*')
         .eq('family_id', userId);
 
-      // Fetch completed tasks for today to calculate the `completed` boolean
-      const todayString = new Date().toISOString().split('T')[0];
+      // Find the start of the local day in UTC for querying
+      const midnightLocal = new Date();
+      midnightLocal.setHours(0, 0, 0, 0);
+
       const { data: completions } = await supabase
         .from('task_completions')
-        .select('task_id')
+        .select('task_id, completed_at')
         .eq('family_id', userId)
-        .gte('completed_at', `${todayString}T00:00:00Z`);
+        .gte('completed_at', midnightLocal.toISOString());
 
-      const completedTaskIds = new Set(completions?.map(c => c.task_id) || []);
+      // Create a map of the latest completion date for each task
+      const completionDates: Record<string, string> = {};
+      completions?.forEach(c => {
+        if (!completionDates[c.task_id] || new Date(c.completed_at) > new Date(completionDates[c.task_id])) {
+          completionDates[c.task_id] = c.completed_at;
+        }
+      });
 
       const tasksWithStatus = (rawTasks || []).map(t => ({
         id: t.id,
@@ -149,7 +157,7 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
         timeSlot: t.time_slot,
         assignedTo: t.assigned_to,
         days: t.days_of_week || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        completed: completedTaskIds.has(t.id),
+        completedAt: completionDates[t.id] || undefined,
       }));
 
       // Fetch Rewards
@@ -212,11 +220,15 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
   completeTask: async (taskId) => {
     const state = get();
     const task = state.tasks.find(t => t.id === taskId);
-    if (!task || task.completed || !state.group) return;
+    const todayStr = new Date().toDateString();
+    const isCompleted = task?.completedAt && new Date(task.completedAt).toDateString() === todayStr;
+    if (!task || isCompleted || !state.group) return;
+
+    const now = new Date().toISOString();
 
     // Optimistic UI
     set({
-      tasks: state.tasks.map(t => t.id === taskId ? { ...t, completed: true } : t),
+      tasks: state.tasks.map(t => t.id === taskId ? { ...t, completedAt: now } : t),
       members: state.members.map(m =>
         m.id === task.assignedTo ? { ...m, points: m.points + task.points } : m
       ),
@@ -242,10 +254,12 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
     // we would delete the completion record.
     const state = get();
     const task = state.tasks.find(t => t.id === taskId);
-    if (!task || !task.completed) return;
+    const todayStr = new Date().toDateString();
+    const isCompleted = task?.completedAt && new Date(task.completedAt).toDateString() === todayStr;
+    if (!task || !isCompleted) return;
 
     set({
-      tasks: state.tasks.map(t => t.id === taskId ? { ...t, completed: false } : t),
+      tasks: state.tasks.map(t => t.id === taskId ? { ...t, completedAt: undefined } : t),
       members: state.members.map(m =>
         m.id === task.assignedTo ? { ...m, points: Math.max(0, m.points - task.points) } : m
       ),
@@ -284,7 +298,7 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
         timeSlot: data.time_slot,
         assignedTo: data.assigned_to,
         days: data.days_of_week || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        completed: false, // brand new tasks are incomplete
+        completedAt: undefined, // brand new tasks are incomplete
       }],
     });
   },
@@ -503,8 +517,9 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
 
   getTotalPointsEarnedToday: () => {
     const { tasks } = get();
+    const todayStr = new Date().toDateString();
     return tasks
-      .filter(t => t.completed)
+      .filter(t => t.completedAt && new Date(t.completedAt).toDateString() === todayStr)
       .reduce((sum, t) => sum + t.points, 0);
   },
 
