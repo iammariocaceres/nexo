@@ -41,6 +41,7 @@ export interface CalendarEvent {
   id: string;
   title: string;
   date: string; // YYYY-MM-DD
+  time?: string;
   emoji: string;
   color: string;
   text_color: string;
@@ -365,6 +366,7 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
       family_id: state.group.id,
       title: event.title,
       date: event.date,
+      time: event.time || null,
       emoji: event.emoji,
       color: randomColor.color,
       text_color: randomColor.text_color,

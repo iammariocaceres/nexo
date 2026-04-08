@@ -159,6 +159,14 @@ const QuickStats = () => {
 
 // ─── Upcoming Events ──────────────────────────────────────────────────────────
 
+const formatEventTime = (timeStr?: string) => {
+  if (!timeStr) return '';
+  const [h, m] = timeStr.split(':');
+  const d = new Date();
+  d.setHours(parseInt(h, 10), parseInt(m, 10));
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+};
+
 const UpcomingEvents = () => {
   const { events } = useFamilyStore();
   
@@ -196,7 +204,8 @@ const UpcomingEvents = () => {
             const evDate = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
             const diffDays = Math.round((evDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
             
-            const dateLabel = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} days`;
+            let dateLabel = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} days`;
+            if (ev.time) dateLabel += ` at ${formatEventTime(ev.time)}`;
             
             return (
               <div key={ev.id} className={`flex items-center gap-3 p-3 rounded-2xl border ${ev.color} border-opacity-50`}>

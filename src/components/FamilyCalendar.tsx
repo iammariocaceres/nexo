@@ -5,7 +5,7 @@ import { useFamilyStore, type CalendarEvent } from '../store/useFamilyStore';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAYS_OF_WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -24,6 +24,14 @@ const parseDateString = (dateStr: string) => {
   };
 };
 
+const formatEventTime = (timeStr?: string) => {
+  if (!timeStr) return '';
+  const [h, m] = timeStr.split(':');
+  const d = new Date();
+  d.setHours(parseInt(h, 10), parseInt(m, 10));
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+};
+
 const getEventsForDay = (events: CalendarEvent[], year: number, month: number, day: number) => {
   return events.filter(ev => {
     const d = parseDateString(ev.date);
@@ -35,19 +43,20 @@ const getEventsForDay = (events: CalendarEvent[], year: number, month: number, d
 
 interface EventModalProps {
   onClose: () => void;
-  onSave: (data: { title: string; date: string; emoji: string }) => void;
+  onSave: (data: { title: string; date: string; time?: string; emoji: string }) => void;
   defaultDate?: string; // YYYY-MM-DD
 }
 
 const EventModal = ({ onClose, onSave, defaultDate }: EventModalProps) => {
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(defaultDate || new Date().toISOString().split('T')[0]);
+  const [time, setTime] = useState('');
   const [emoji, setEmoji] = useState('📅');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !date) return;
-    onSave({ title: title.trim(), date, emoji });
+    onSave({ title: title.trim(), date, time: time || undefined, emoji });
   };
 
   return (
@@ -78,14 +87,25 @@ const EventModal = ({ onClose, onSave, defaultDate }: EventModalProps) => {
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Date</label>
-            <input
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-primary focus:bg-white transition-all"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Date</label>
+              <input
+                type="date"
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-primary focus:bg-white transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Time <span className="opacity-50">(opt)</span></label>
+              <input
+                type="time"
+                value={time}
+                onChange={e => setTime(e.target.value)}
+                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-primary focus:bg-white transition-all"
+              />
+            </div>
           </div>
 
           <div>
@@ -246,7 +266,10 @@ const EventPanel = ({ day, month, year, events, onClose, onAddEventClick, onRemo
                 className={`flex items-center gap-3 p-3 rounded-2xl ${ev.color} group`}
               >
                 <span className="text-xl shrink-0">{ev.emoji}</span>
-                <p className={`font-bold text-sm flex-1 ${ev.text_color}`}>{ev.title}</p>
+                <div className={`font-bold flex-1 ${ev.text_color}`}>
+                  <p className="text-sm">{ev.title}</p>
+                  {ev.time && <p className="text-[10px] opacity-70 mt-0.5 uppercase tracking-wide">{formatEventTime(ev.time)}</p>}
+                </div>
                 <button
                   onClick={() => onRemoveEvent(ev.id)}
                   className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity bg-white/50 hover:bg-white text-rose-500`}
@@ -314,7 +337,8 @@ const UpcomingSidebar = ({ events, onAddEventClick }: {
             const evDate = new Date(d.year, d.month, d.day);
             const diffDays = Math.round((evDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
             
-            const dateLabel = diffDays === 0 ? 'Today!' : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} days`;
+            let dateLabel = diffDays === 0 ? 'Today!' : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} days`;
+            if (ev.time) dateLabel += ` at ${formatEventTime(ev.time)}`;
 
             return (
               <motion.div
@@ -361,9 +385,10 @@ export const FamilyCalendar = () => {
 
   // Build calendar grid
   const firstDayOfMonth = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
+  const startOffset = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const cells: (number | null)[] = [
-    ...Array(firstDayOfMonth).fill(null),
+    ...Array(startOffset).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
   // Pad to complete last row
@@ -393,7 +418,7 @@ export const FamilyCalendar = () => {
     setIsModalOpen(true);
   };
 
-  const handleSaveEvent = (data: { title: string; date: string; emoji: string }) => {
+  const handleSaveEvent = (data: { title: string; date: string; time?: string; emoji: string }) => {
     addEvent(data);
     setIsModalOpen(false);
   };
