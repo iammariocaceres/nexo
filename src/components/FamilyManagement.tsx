@@ -590,19 +590,71 @@ const RewardsPanel = () => {
 // ─── Family Management ────────────────────────────────────────────────────────
 
 export const FamilyManagement = () => {
-  const { group, members } = useFamilyStore();
+  const { group, members, updateFamilyName, resetAllPoints } = useFamilyStore();
   const admins = members.filter(m => m.role === 'admin');
+
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [newName, setNewName] = useState(group?.name || '');
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  const handleSaveName = async () => {
+    if (newName.trim()) {
+      await updateFamilyName(newName);
+    }
+    setIsEditingName(false);
+  };
+
+  const handleReset = async () => {
+    await resetAllPoints();
+    setConfirmReset(false);
+  };
 
   return (
     <div className="flex flex-col gap-5">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 bg-linear-to-br from-slate-600 to-slate-800 rounded-2xl flex items-center justify-center shadow-lg shrink-0">
-          <LuShield className="w-6 h-6 text-white" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-linear-to-br from-slate-600 to-slate-800 rounded-2xl flex items-center justify-center shadow-lg shrink-0">
+            <LuShield className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            {isEditingName ? (
+              <div className="flex items-center gap-2 mb-1">
+                <input 
+                  value={newName} 
+                  onChange={e => setNewName(e.target.value)} 
+                  className="text-2xl font-black text-slate-800 border-b-2 border-primary focus:outline-none bg-transparent max-w-[200px]"
+                  autoFocus
+                />
+                <button onClick={handleSaveName} className="p-1 bg-primary text-white rounded-[6px] shadow-sm"><LuSquareCheck className="w-5 h-5"/></button>
+                <button onClick={() => setIsEditingName(false)} className="p-1 bg-slate-200 text-slate-600 rounded-[6px] shadow-sm"><LuX className="w-5 h-5"/></button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 group/title cursor-pointer mb-1" onClick={() => { setIsEditingName(true); setNewName(group?.name || ''); }}>
+                <h1 className="text-2xl font-black text-slate-800 leading-tight">{group?.name || 'Familia'}</h1>
+                <LuPencilLine className="w-4 h-4 text-slate-300 opacity-0 group-hover/title:opacity-100 transition-opacity" />
+              </div>
+            )}
+            <p className="text-sm text-slate-500 font-medium leading-none">{admins.map(a => a.name).join(' & ')} manage here ⚙️</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-black text-slate-800 leading-tight">Family Admin Panel</h1>
-          <p className="text-sm text-slate-500 font-medium">{group?.name || 'Familia'} · {admins.map(a => a.name).join(' & ')} manage here ⚙️</p>
+
+        {/* Reset points block */}
+        <div className="flex items-center gap-2 shrink-0">
+          {confirmReset ? (
+            <div className="flex items-center gap-2 bg-rose-50 p-1.5 rounded-xl border border-rose-200">
+              <span className="text-xs font-bold text-rose-600 px-2 line-clamp-1 truncate">Are you sure?</span>
+              <button onClick={handleReset} className="px-3 py-1.5 bg-rose-500 text-white font-black text-xs rounded-lg shadow-sm whitespace-nowrap">Yes, Reset</button>
+              <button onClick={() => setConfirmReset(false)} className="px-2 py-1.5 bg-white text-slate-600 border font-bold text-xs rounded-lg shadow-sm">Cancel</button>
+            </div>
+          ) : (
+            <button 
+              onClick={() => setConfirmReset(true)}
+              className="px-4 py-2 bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-600 font-bold text-sm rounded-xl border border-slate-200 hover:border-rose-200 transition-colors shadow-sm whitespace-nowrap"
+            >
+              Reset Points 🔄
+            </button>
+          )}
         </div>
       </div>
 

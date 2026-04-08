@@ -65,6 +65,10 @@ interface FamilyState {
   isLoading: boolean;
   hasFetchedOnce: boolean;
 
+  // Group actions
+  updateFamilyName: (newName: string) => Promise<void>;
+  resetAllPoints: () => Promise<void>;
+
   // Supabase Sync Actions
   fetchFamilyData: (userId: string) => Promise<void>;
   setupFamily: (userId: string, data: SetupData) => Promise<void>;
@@ -309,6 +313,7 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
     set((state) => ({
       tasks: state.tasks.filter(t => t.id !== taskId),
     }));
+    await supabase.from('tasks').delete().eq('id', taskId);
   },
 
   redeemReward: async (rewardId, memberId) => {
@@ -501,5 +506,24 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
     return tasks
       .filter(t => t.completed)
       .reduce((sum, t) => sum + t.points, 0);
+  },
+
+  updateFamilyName: async (newName: string) => {
+    const state = get();
+    if (!state.group) return;
+    set({ group: { ...state.group, name: newName } });
+    await supabase.from('family_groups').update({ name: newName }).eq('id', state.group.id);
+  },
+
+  resetAllPoints: async () => {
+    const state = get();
+    if (!state.group) return;
+    
+    // Optimistic UI update
+    set({
+      members: state.members.map(m => ({ ...m, points: 0 }))
+    });
+    
+    await supabase.from('members').update({ points: 0 }).eq('family_id', state.group.id);
   },
 }));
