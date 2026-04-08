@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LuUsers, LuShield, LuUser, LuStar, LuTrash2,
-  LuSquareCheck, LuTrophy, LuPlus, LuX
+  LuSquareCheck, LuTrophy, LuPlus, LuX, LuPencil, LuPencilLine
 } from 'react-icons/lu';
 import { useFamilyStore, type TimeSlot, type Member } from '../store/useFamilyStore';
 
@@ -240,7 +240,7 @@ const MembersPanel = () => {
                 ) : (
                   <>
                     <motion.button onClick={() => { setEditingId(member.id); setEditForm({}); }} className="p-2 text-slate-400 hover:text-primary hover:bg-blue-50 rounded-xl transition-all h-full self-stretch flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z" /></svg>
+                      <LuPencilLine className="w-4 h-4" />
                     </motion.button>
                     <motion.button onClick={() => setConfirmDelete(member.id)} className="p-2 text-slate-300 hover:text-rose-400 hover:bg-rose-50 rounded-xl transition-all h-full self-stretch flex items-center">
                       <LuTrash2 className="w-4 h-4" />

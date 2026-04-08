@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { LuX, LuLink, LuCheck } from 'react-icons/lu';
 
@@ -9,52 +10,34 @@ interface AvatarPickerModalProps {
   memberName: string;
 }
 
-const PRESET_AVATARS = [
-  // Emojis/Fun
-  'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lucky&backgroundColor=ffdfbf',
-  'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Felix&backgroundColor=c0aede',
-  'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Aneka&backgroundColor=b6e3f4',
-  'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Mittens&backgroundColor=d1d4f9',
-  
-  // Personas
-  'https://api.dicebear.com/7.x/personas/svg?seed=Mario&backgroundColor=ffdfbf',
-  'https://api.dicebear.com/7.x/personas/svg?seed=Callie&backgroundColor=c0aede',
-  'https://api.dicebear.com/7.x/personas/svg?seed=Abby&backgroundColor=b6e3f4',
-  'https://api.dicebear.com/7.x/personas/svg?seed=Jack&backgroundColor=d1d4f9',
-  
-  // Avataaars
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=George&backgroundColor=ffdfbf',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=Nala&backgroundColor=c0aede',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=Cleo&backgroundColor=b6e3f4',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=Buster&backgroundColor=d1d4f9',
-  
-  // Thumbs
-  'https://api.dicebear.com/7.x/thumbs/svg?seed=Tinkerbell&backgroundColor=ffdfbf',
-  'https://api.dicebear.com/7.x/thumbs/svg?seed=Oscar&backgroundColor=c0aede',
-  'https://api.dicebear.com/7.x/thumbs/svg?seed=Coco&backgroundColor=b6e3f4',
-  'https://api.dicebear.com/7.x/thumbs/svg?seed=Luna&backgroundColor=d1d4f9',
-
-  // Lorelei
-  'https://api.dicebear.com/7.x/lorelei/svg?seed=Sasha&backgroundColor=ffdfbf',
-  'https://api.dicebear.com/7.x/lorelei/svg?seed=Max&backgroundColor=c0aede',
-  'https://api.dicebear.com/7.x/lorelei/svg?seed=Lucy&backgroundColor=b6e3f4',
-  'https://api.dicebear.com/7.x/lorelei/svg?seed=Rocky&backgroundColor=d1d4f9',
-];
-
 export const AvatarPickerModal = ({ isOpen, onClose, onSelect, memberName }: AvatarPickerModalProps) => {
   const [customUrl, setCustomUrl] = useState('');
+  const [shuffleKey, setShuffleKey] = useState(0);
+
+  // Dynamically generate avatars without hardcoding long arrays of links
+  const DYNAMIC_AVATARS = useMemo(() => {
+    const styles = ['fun-emoji', 'personas', 'avataaars', 'thumbs', 'lorelei'];
+    const bgColors = ['ffdfbf', 'c0aede', 'b6e3f4', 'd1d4f9', 'ffd3da', 'b1e3ad', 'fcfcb0'];
+    return Array.from({ length: 30 }).map((_, i) => {
+      const style = styles[i % styles.length];
+      const bg = bgColors[i % bgColors.length];
+      // Randomize seed based on shuffleKey to create new ones on demand
+      const seed = `NexoSeed_${shuffleKey}_${i}`;
+      return `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}&backgroundColor=${bg}`;
+    });
+  }, [shuffleKey]);
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-999 flex items-center justify-center p-4">
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm"
       />
 
       {/* Modal */}
@@ -109,14 +92,20 @@ export const AvatarPickerModal = ({ isOpen, onClose, onSelect, memberName }: Ava
             </div>
           </div>
 
-          <div className="mb-3">
+          <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Or pick a preset</h3>
+            <button
+              onClick={() => setShuffleKey(k => k + 1)}
+              className="text-xs font-bold text-primary hover:text-primary/70 transition-colors"
+            >
+              Shuffle 🎲
+            </button>
           </div>
 
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
-            {PRESET_AVATARS.map((url, idx) => (
+            {DYNAMIC_AVATARS.map((url, idx) => (
               <motion.button
-                key={idx}
+                key={url}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
@@ -141,6 +130,7 @@ export const AvatarPickerModal = ({ isOpen, onClose, onSelect, memberName }: Ava
           </div>
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 };

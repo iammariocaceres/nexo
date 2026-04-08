@@ -56,7 +56,7 @@ export const AppHeader = () => {
         {/* Greeting */}
         <div className="hidden md:block">
           <p className="font-black text-slate-800 text-sm leading-tight">
-            {greeting.emoji} {greeting.text}, <span className="text-primary">{group?.name?.split(' ')[1] || group?.name || 'Familia'}!</span>
+            {greeting.emoji} {greeting.text}, <span className="text-primary">{group?.name || 'Familia'}!</span>
           </p>
           <p className="text-xs text-slate-400 font-medium">{today}</p>
         </div>
