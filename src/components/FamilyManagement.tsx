@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LuUsers, LuShield, LuUser, LuStar, LuTrash2,
-  LuSquareCheck, LuTrophy, LuPlus, LuX, LuPencilLine
+  LuSquareCheck, LuTrophy, LuPlus, LuX, LuPencilLine, LuCopy
 } from 'react-icons/lu';
 import { useFamilyStore, type TimeSlot, type Member, type Task } from '../store/useFamilyStore';
 
@@ -274,7 +274,7 @@ const TasksPanel = () => {
   const { tasks, members, removeTask, addTask, updateTask } = useFamilyStore();
   const [confirm, setConfirm] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  
+
   const [form, setForm] = useState({ title: '', emoji: '✅', points: 10, timeSlot: 'morning' as TimeSlot, assignedTo: members[0]?.id ?? '', days: ALL_DAYS });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Task>>({});
@@ -284,6 +284,18 @@ const TasksPanel = () => {
     addTask(form);
     setShowForm(false);
     setForm({ title: '', emoji: '✅', points: 10, timeSlot: 'morning', assignedTo: members[0]?.id ?? '', days: ALL_DAYS });
+  };
+
+  const handleDuplicate = (task: Task) => {
+    setForm({
+      title: task.title + ' (Copy)',
+      emoji: task.emoji,
+      points: task.points,
+      timeSlot: task.timeSlot,
+      assignedTo: task.assignedTo,
+      days: task.days,
+    });
+    setShowForm(true);
   };
 
   const handleSaveEdit = (taskId: string) => {
@@ -436,7 +448,7 @@ const TasksPanel = () => {
                   </div>
                 </>
               )}
-              
+
               <div className="flex gap-1 shrink-0 flex-col sm:flex-row">
                 {isEditing ? (
                   <>
@@ -450,8 +462,9 @@ const TasksPanel = () => {
                   </motion.div>
                 ) : (
                   <>
-                    <button onClick={() => { setEditingId(task.id); setEditForm({}); }} className="p-1.5 text-slate-400 hover:text-primary transition-colors"><LuPencilLine className="w-4 h-4" /></button>
-                    <button onClick={() => setConfirm(task.id)} className="p-1.5 text-slate-300 hover:text-rose-400 transition-colors"><LuTrash2 className="w-4 h-4" /></button>
+                    <button onClick={() => { setEditingId(task.id); setEditForm({}); }} className="p-1.5 text-slate-400 hover:text-primary transition-colors" title="Edit"><LuPencilLine className="w-4 h-4" /></button>
+                    <button onClick={() => handleDuplicate(task)} className="p-1.5 text-slate-400 hover:text-indigo-400 transition-colors" title="Duplicate"><LuCopy className="w-4 h-4" /></button>
+                    <button onClick={() => setConfirm(task.id)} className="p-1.5 text-slate-300 hover:text-rose-400 transition-colors" title="Delete"><LuTrash2 className="w-4 h-4" /></button>
                   </>
                 )}
               </div>
