@@ -139,7 +139,7 @@ interface DayCellProps {
 
 const DayCell = ({ day, isToday, events, onSelect }: DayCellProps) => {
   if (day === null) {
-    return <div className="aspect-square rounded-2xl" />;
+    return <div className="h-16 sm:h-20 rounded-xl" />;
   }
 
   const hasEvents = events.length > 0;
@@ -150,7 +150,7 @@ const DayCell = ({ day, isToday, events, onSelect }: DayCellProps) => {
       whileTap={{ scale: 0.95 }}
       onClick={() => onSelect(day)}
       className={`
-        aspect-square rounded-2xl p-1.5 flex flex-col items-center transition-all relative
+        h-16 sm:h-20 rounded-xl sm:rounded-2xl p-1 sm:p-1.5 flex flex-col items-center transition-all relative overflow-hidden
         ${isToday
           ? 'bg-primary text-white shadow-lg shadow-primary/30 font-black'
           : hasEvents
@@ -159,17 +159,26 @@ const DayCell = ({ day, isToday, events, onSelect }: DayCellProps) => {
         }
       `}
     >
-      <span className={`text-sm font-bold leading-none mt-1 ${isToday ? 'text-white' : 'text-slate-700'}`}>
+      <span className={`text-xs sm:text-sm font-bold leading-none mt-0.5 sm:mt-1 ${isToday ? 'text-white' : 'text-slate-700'}`}>
         {day}
       </span>
 
-      {/* Event dots */}
+      {/* Event dots & titles */}
       {hasEvents && (
-        <div className="flex gap-0.5 mt-1 flex-wrap justify-center">
-          {events.slice(0, 3).map((ev, i) => (
-            <span key={i} className="text-[10px] leading-none">{ev.emoji}</span>
+        <div className="flex flex-col gap-0.5 w-full mt-1 px-0.5 relative overflow-hidden h-full">
+          {events.slice(0, 2).map((ev, i) => (
+            <div key={i} className={`flex items-center justify-center sm:justify-start gap-1 w-full rounded pl-0.5 sm:px-1 py-0.5 min-h-0 overflow-hidden ${isToday ? 'bg-black/10' : 'bg-slate-50'}`} title={ev.title}>
+              <span className="text-[10px] sm:text-xs leading-none shrink-0">{ev.emoji}</span>
+              <span className={`text-[8px] sm:text-[9px] font-bold truncate hidden sm:block leading-tight ${isToday ? 'text-white' : ev.text_color}`}>
+                {ev.title}
+              </span>
+            </div>
           ))}
-          {events.length > 3 && <span className="text-[10px] leading-none text-slate-400 font-bold">+</span>}
+          {events.length > 2 && (
+            <div className={`text-[9px] leading-none font-bold mx-auto mt-0.5 ${isToday ? 'text-white/80' : 'text-slate-400'}`}>
+              +{events.length - 2}
+            </div>
+          )}
         </div>
       )}
     </motion.button>
