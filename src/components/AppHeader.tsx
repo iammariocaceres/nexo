@@ -28,11 +28,12 @@ export const AppHeader = () => {
     day: 'numeric',
   });
 
+  const JS_TODAY = new Date().toDateString();
   const totalPointsToday = tasks
-    .filter(t => t.completed)
+    .filter(t => !!(t.completedAt && new Date(t.completedAt).toDateString() === JS_TODAY))
     .reduce((sum, t) => sum + t.points, 0);
 
-  const completedCount = tasks.filter(t => t.completed).length;
+  const completedCount = tasks.filter(t => !!(t.completedAt && new Date(t.completedAt).toDateString() === JS_TODAY)).length;
   const totalCount = tasks.length;
 
   return (

@@ -8,14 +8,15 @@ const MemberCard = ({ member }: { member: Member }) => {
   const { tasks } = useFamilyStore();
   const JS_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const currentDay = JS_DAYS[new Date().getDay()];
+  const JS_TODAY = new Date().toDateString();
   
   const memberTasks = tasks.filter(t => t.assignedTo === member.id && t.days.includes(currentDay));
-  const completed = memberTasks.filter(t => t.completed).length;
+  const completed = memberTasks.filter(t => !!(t.completedAt && new Date(t.completedAt).toDateString() === JS_TODAY)).length;
   const total = memberTasks.length;
   const pct = total > 0 ? (completed / total) * 100 : 0;
 
   const todayEarned = memberTasks
-    .filter(t => t.completed)
+    .filter(t => !!(t.completedAt && new Date(t.completedAt).toDateString() === JS_TODAY))
     .reduce((s, t) => s + t.points, 0);
 
   return (
@@ -89,11 +90,12 @@ const Leaderboard = () => {
   const { members, tasks } = useFamilyStore();
   const JS_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const currentDay = JS_DAYS[new Date().getDay()];
+  const JS_TODAY = new Date().toDateString();
 
   const ranked = [...members]
     .map(m => ({
       ...m,
-      todayXP: tasks.filter(t => t.assignedTo === m.id && t.days.includes(currentDay) && t.completed).reduce((s, t) => s + t.points, 0),
+      todayXP: tasks.filter(t => t.assignedTo === m.id && t.days.includes(currentDay) && !!(t.completedAt && new Date(t.completedAt).toDateString() === JS_TODAY)).reduce((s, t) => s + t.points, 0),
     }))
     .sort((a, b) => b.todayXP - a.todayXP);
   const medals = ['🥇', '🥈', '🥉'];
@@ -138,11 +140,12 @@ const QuickStats = () => {
   const { tasks } = useFamilyStore();
   const JS_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const currentDay = JS_DAYS[new Date().getDay()];
+  const JS_TODAY = new Date().toDateString();
   const todaysTasks = tasks.filter(t => t.days.includes(currentDay));
 
-  const totalCompleted = todaysTasks.filter(t => t.completed).length;
+  const totalCompleted = todaysTasks.filter(t => !!(t.completedAt && new Date(t.completedAt).toDateString() === JS_TODAY)).length;
   const totalTasks = todaysTasks.length;
-  const totalEarned = todaysTasks.filter(t => t.completed).reduce((s, t) => s + t.points, 0);
+  const totalEarned = todaysTasks.filter(t => !!(t.completedAt && new Date(t.completedAt).toDateString() === JS_TODAY)).reduce((s, t) => s + t.points, 0);
 
   return (
     <div className="grid grid-cols-3 gap-3">

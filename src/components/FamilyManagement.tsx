@@ -272,6 +272,7 @@ const MembersPanel = () => {
 
 const TasksPanel = () => {
   const { tasks, members, removeTask, addTask, updateTask } = useFamilyStore();
+  const todayStr = new Date().toDateString();
   const [confirm, setConfirm] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
 
@@ -333,7 +334,7 @@ const TasksPanel = () => {
       <SectionHeader
         icon={LuSquareCheck}
         title="Chores & Tasks"
-        subtitle={`${tasks.length} tasks total · ${tasks.filter(t => t.completed).length} completed today`}
+        subtitle={`${tasks.length} tasks total · ${tasks.filter(t => !!(t.completedAt && new Date(t.completedAt).toDateString() === todayStr)).length} completed today`}
         action={
           <button
             onClick={() => setShowForm(f => !f)}
@@ -414,6 +415,7 @@ const TasksPanel = () => {
         {tasks.map(task => {
           const member = members.find(m => m.id === task.assignedTo);
           const isEditing = editingId === task.id;
+          const isCompleted = !!(task.completedAt && new Date(task.completedAt).toDateString() === todayStr);
 
           return (
             <motion.div key={task.id} layout className={`flex items-center gap-3 p-3 bg-slate-50 rounded-xl border ${isEditing ? 'border-primary shadow-sm' : 'border-slate-100'}`}>
@@ -440,10 +442,10 @@ const TasksPanel = () => {
                 <>
                   <span className="text-xl shrink-0">{task.emoji}</span>
                   <div className="flex-1 min-w-0">
-                    <p className={`font-bold text-sm leading-tight ${task.completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>{task.title}</p>
+                    <p className={`font-bold text-sm leading-tight ${isCompleted ? 'line-through text-slate-400' : 'text-slate-700'}`}>{task.title}</p>
                     <p className="text-[10px] text-slate-400 font-medium mt-0.5">
                       {member?.name} · {task.timeSlot} · +{task.points} XP · {task.days.length === 7 ? 'Every day' : task.days.join(', ')}
-                      {task.completed && ' · ✅ Done'}
+                      {isCompleted && ' · ✅ Done'}
                     </p>
                   </div>
                 </>

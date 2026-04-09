@@ -64,8 +64,9 @@ const FloatingParticles = () => (
 
 const IdleMemberCard = ({ member }: { member: Member }) => {
   const { tasks } = useFamilyStore();
+  const todayStr = new Date().toDateString();
   const memberTasks = tasks.filter(t => t.assignedTo === member.id);
-  const done = memberTasks.filter(t => t.completed).length;
+  const done = memberTasks.filter(t => !!(t.completedAt && new Date(t.completedAt).toDateString() === todayStr)).length;
   const total = memberTasks.length;
   const pct = total > 0 ? (done / total) * 100 : 0;
   const allDone = done === total && total > 0;
@@ -152,8 +153,9 @@ export const IdleScreen = ({ onWake }: IdleScreenProps) => {
     day: 'numeric',
   });
 
-  const totalDone = tasks.filter(t => t.completed).length;
-  const totalXP = tasks.filter(t => t.completed).reduce((s, t) => s + t.points, 0);
+  const todayStr = now.toDateString();
+  const totalDone = tasks.filter(t => !!(t.completedAt && new Date(t.completedAt).toDateString() === todayStr)).length;
+  const totalXP = tasks.filter(t => !!(t.completedAt && new Date(t.completedAt).toDateString() === todayStr)).reduce((s, t) => s + t.points, 0);
 
   const greetingKey = getGreetingKey();
   const greeting = GREETINGS[greetingKey];
