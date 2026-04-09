@@ -29,12 +29,14 @@ export const AppHeader = () => {
   });
 
   const JS_TODAY = new Date().toDateString();
+  const JS_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const currentDay = JS_DAYS[new Date().getDay()];
   const totalPointsToday = tasks
     .filter(t => !!(t.completedAt && new Date(t.completedAt).toDateString() === JS_TODAY))
     .reduce((sum, t) => sum + t.points, 0);
 
   const completedCount = tasks.filter(t => !!(t.completedAt && new Date(t.completedAt).toDateString() === JS_TODAY)).length;
-  const totalCount = tasks.length;
+  const totalCount = tasks.filter(t => t.days.includes(currentDay)).length;
 
   return (
     <header className="flex items-center justify-between px-6 py-3 bg-white/60 backdrop-blur-xl border-b border-white/20 relative z-40">
