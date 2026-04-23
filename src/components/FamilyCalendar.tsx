@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LuChevronLeft, LuChevronRight, LuPlus, LuX, LuCalendar, LuTrash2, LuRepeat } from 'react-icons/lu';
 import { useFamilyStore, getEventsForDay, type CalendarEvent } from '../store/useFamilyStore';
-import { DAYS_OF_WEEK, parseDateString, formatEventTime } from '../lib/dateUtils';
+import { DAYS_OF_WEEK, formatEventTime } from '../lib/dateUtils';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -148,8 +148,8 @@ const EventModal = ({ onClose, onSave, defaultDate }: EventModalProps) => {
                             type="button"
                             onClick={() => toggleDay(day)}
                             className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border-2 ${daysOfWeek.includes(day)
-                                ? 'bg-primary border-primary text-white shadow-sm'
-                                : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                              ? 'bg-primary border-primary text-white shadow-sm'
+                              : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
                               }`}
                           >
                             {day}
