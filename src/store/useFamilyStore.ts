@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabaseClient';
 import type { SetupData } from '../components/SetupWizard';
+import { DAYS_OF_WEEK, parseDateString } from '../lib/dateUtils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,6 +28,9 @@ export interface Task {
   timeSlot: TimeSlot;
   assignedTo: string;
   days: string[];
+  startDate?: string; // YYYY-MM-DD
+  endDate?: string;   // YYYY-MM-DD
+  isActive: boolean;
 }
 
 export interface Reward {
@@ -41,7 +45,10 @@ export interface Reward {
 export interface CalendarEvent {
   id: string;
   title: string;
-  date: string; // YYYY-MM-DD
+  startDate: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD (null for non-recurring)
+  daysOfWeek: string[]; // ['Mon', 'Tue', ...]
+  isRecurring: boolean;
   time?: string;
   emoji: string;
   color: string;
@@ -53,6 +60,52 @@ export interface FamilyGroup {
   name: string;
   admin_pin: string;
 }
+
+export const getEventsForDay = (events: CalendarEvent[], year: number, month: number, day: number) => {
+  const targetDate = new Date(year, month, day);
+  const dayIndex = targetDate.getDay();
+  const targetDayOfWeek = DAYS_OF_WEEK[dayIndex === 0 ? 6 : dayIndex - 1];
+
+  return events.filter(ev => {
+    const start = parseDateString(ev.startDate);
+    const startDate = new Date(start.year, start.month, start.day);
+
+    if (!ev.isRecurring) {
+      return start.year === year && start.month === month && start.day === day;
+    }
+
+    if (targetDate < startDate) return false;
+
+    if (ev.endDate) {
+      const end = parseDateString(ev.endDate);
+      const endDate = new Date(end.year, end.month, end.day);
+      if (targetDate > endDate) return false;
+    }
+
+    return ev.daysOfWeek.includes(targetDayOfWeek);
+  });
+};
+
+export const isTaskActive = (task: Task, date: Date) => {
+  if (!task.isActive) return false;
+
+  const targetDate = new Date(date);
+  targetDate.setHours(0, 0, 0, 0);
+
+  if (task.startDate) {
+    const start = parseDateString(task.startDate);
+    const startDate = new Date(start.year, start.month, start.day);
+    if (targetDate < startDate) return false;
+  }
+
+  if (task.endDate) {
+    const end = parseDateString(task.endDate);
+    const endDate = new Date(end.year, end.month, end.day);
+    if (targetDate > endDate) return false;
+  }
+
+  return true;
+};
 
 // ─── Store Interface ──────────────────────────────────────────────────────────
 
@@ -157,6 +210,9 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
         timeSlot: t.time_slot,
         assignedTo: t.assigned_to,
         days: t.days_of_week || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        startDate: t.start_date || undefined,
+        endDate: t.end_date || undefined,
+        isActive: t.is_active ?? true,
         completedAt: completionDates[t.id] || undefined,
       }));
 
@@ -177,7 +233,13 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
         members: members?.map(m => ({ ...m, displayName: m.display_name, avatar_url: m.avatar_url })) || [],
         tasks: tasksWithStatus,
         rewards: rewards || [],
-        events: events || [],
+        events: (events || []).map(e => ({
+          ...e,
+          startDate: e.start_date,
+          endDate: e.end_date,
+          daysOfWeek: e.days_of_week || [],
+          isRecurring: e.is_recurring,
+        })),
         isLoading: false,
         hasFetchedOnce: true,
       });
@@ -282,6 +344,9 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
       points: task.points,
       time_slot: task.timeSlot,
       days_of_week: task.days,
+      start_date: task.startDate || null,
+      end_date: task.endDate || null,
+      is_active: task.isActive ?? true,
     }).select('*').single();
 
     if (error || !data) {
@@ -298,6 +363,9 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
         timeSlot: data.time_slot,
         assignedTo: data.assigned_to,
         days: data.days_of_week || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        startDate: data.start_date || undefined,
+        endDate: data.end_date || undefined,
+        isActive: data.is_active ?? true,
         completedAt: undefined, // brand new tasks are incomplete
       }],
     });
@@ -319,6 +387,9 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
     if (updates.timeSlot !== undefined) dbUpdates.time_slot = updates.timeSlot;
     if (updates.assignedTo !== undefined) dbUpdates.assigned_to = updates.assignedTo;
     if (updates.days !== undefined) dbUpdates.days_of_week = updates.days;
+    if (updates.startDate !== undefined) dbUpdates.start_date = updates.startDate;
+    if (updates.endDate !== undefined) dbUpdates.end_date = updates.endDate;
+    if (updates.isActive !== undefined) dbUpdates.is_active = updates.isActive;
 
     await supabase.from('tasks').update(dbUpdates).eq('id', taskId);
   },
@@ -409,7 +480,10 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
     const { data, error } = await supabase.from('calendar_events').insert({
       family_id: state.group.id,
       title: event.title,
-      date: event.date,
+      start_date: event.startDate,
+      end_date: event.endDate || null,
+      days_of_week: event.daysOfWeek || [],
+      is_recurring: event.isRecurring || false,
       time: event.time || null,
       emoji: event.emoji,
       color: randomColor.color,
@@ -422,7 +496,13 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
     }
 
     set({
-      events: [...state.events, data],
+      events: [...state.events, {
+        ...data,
+        startDate: data.start_date,
+        endDate: data.end_date,
+        daysOfWeek: data.days_of_week,
+        isRecurring: data.is_recurring,
+      }],
     });
   },
 

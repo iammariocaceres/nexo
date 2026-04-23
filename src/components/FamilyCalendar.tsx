@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LuChevronLeft, LuChevronRight, LuPlus, LuX, LuCalendar, LuTrash2 } from 'react-icons/lu';
-import { useFamilyStore, type CalendarEvent } from '../store/useFamilyStore';
+import { LuChevronLeft, LuChevronRight, LuPlus, LuX, LuCalendar, LuTrash2, LuRepeat } from 'react-icons/lu';
+import { useFamilyStore, getEventsForDay, type CalendarEvent } from '../store/useFamilyStore';
+import { DAYS_OF_WEEK, parseDateString, formatEventTime } from '../lib/dateUtils';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DAYS_OF_WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -14,49 +14,51 @@ const EMOJI_OPTIONS = ['📅', '🎉', '🎂', '✈️', '🏕️', '🍕', '�
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// Parse "YYYY-MM-DD" safely to local visual interpretation (ignoring GMT offsets)
-const parseDateString = (dateStr: string) => {
-  const [y, m, d] = dateStr.split('-');
-  return {
-    year: parseInt(y, 10),
-    month: parseInt(m, 10) - 1, // 0-indexed
-    day: parseInt(d, 10),
-  };
-};
-
-const formatEventTime = (timeStr?: string) => {
-  if (!timeStr) return '';
-  const [h, m] = timeStr.split(':');
-  const d = new Date();
-  d.setHours(parseInt(h, 10), parseInt(m, 10));
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-};
-
-const getEventsForDay = (events: CalendarEvent[], year: number, month: number, day: number) => {
-  return events.filter(ev => {
-    const d = parseDateString(ev.date);
-    return d.year === year && d.month === month && d.day === day;
-  });
-};
+// Helpers removed, now imported from dateUtils and useFamilyStore
 
 // ─── Event Modal ──────────────────────────────────────────────────────────────
 
 interface EventModalProps {
   onClose: () => void;
-  onSave: (data: { title: string; date: string; time?: string; emoji: string }) => void;
+  onSave: (data: {
+    title: string;
+    startDate: string;
+    endDate?: string;
+    daysOfWeek: string[];
+    isRecurring: boolean;
+    time?: string;
+    emoji: string;
+  }) => void;
   defaultDate?: string; // YYYY-MM-DD
 }
 
 const EventModal = ({ onClose, onSave, defaultDate }: EventModalProps) => {
   const [title, setTitle] = useState('');
-  const [date, setDate] = useState(defaultDate || new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(defaultDate || new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [daysOfWeek, setDaysOfWeek] = useState<string[]>([]);
   const [time, setTime] = useState('');
   const [emoji, setEmoji] = useState('📅');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !date) return;
-    onSave({ title: title.trim(), date, time: time || undefined, emoji });
+    if (!title.trim() || !startDate) return;
+    onSave({
+      title: title.trim(),
+      startDate,
+      endDate: isRecurring && endDate ? endDate : undefined,
+      daysOfWeek: isRecurring ? daysOfWeek : [],
+      isRecurring,
+      time: time || undefined,
+      emoji
+    });
+  };
+
+  const toggleDay = (day: string) => {
+    setDaysOfWeek(prev =>
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+    );
   };
 
   return (
@@ -87,24 +89,87 @@ const EventModal = ({ onClose, onSave, defaultDate }: EventModalProps) => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Date</label>
-              <input
-                type="date"
-                value={date}
-                onChange={e => setDate(e.target.value)}
-                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-primary focus:bg-white transition-all"
-              />
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                  {isRecurring ? 'Start Date' : 'Date'}
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-primary focus:bg-white transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Time <span className="opacity-50">(opt)</span></label>
+                <input
+                  type="time"
+                  value={time}
+                  onChange={e => setTime(e.target.value)}
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-primary focus:bg-white transition-all"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Time <span className="opacity-50">(opt)</span></label>
-              <input
-                type="time"
-                value={time}
-                onChange={e => setTime(e.target.value)}
-                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-primary focus:bg-white transition-all"
-              />
+
+            <div className="bg-slate-50 p-4 rounded-2xl border-2 border-slate-100">
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  <LuRepeat className="w-4 h-4 text-primary" />
+                  Recurring Event
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsRecurring(!isRecurring)}
+                  className={`w-12 h-6 rounded-full transition-colors relative ${isRecurring ? 'bg-primary' : 'bg-slate-300'}`}
+                >
+                  <motion.div
+                    animate={{ x: isRecurring ? 24 : 4 }}
+                    className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                  />
+                </button>
+              </div>
+
+              <AnimatePresence>
+                {isRecurring && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="flex flex-col gap-4 pt-2 overflow-hidden"
+                  >
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Repeat on</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {DAYS_OF_WEEK.map(day => (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => toggleDay(day)}
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border-2 ${daysOfWeek.includes(day)
+                                ? 'bg-primary border-primary text-white shadow-sm'
+                                : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                              }`}
+                          >
+                            {day}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Ends on (Optional)</label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={e => setEndDate(e.target.value)}
+                        className="w-full bg-white border-2 border-slate-100 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:border-primary transition-all"
+                        placeholder="Never"
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
@@ -137,10 +202,10 @@ const EventModal = ({ onClose, onSave, defaultDate }: EventModalProps) => {
 
           <button
             type="submit"
-            disabled={!title.trim() || !date}
+            disabled={!title.trim() || !startDate || (isRecurring && daysOfWeek.length === 0)}
             className="mt-2 w-full bg-primary text-white font-black py-3.5 rounded-2xl shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 disabled:pointer-events-none"
           >
-            Create Event
+            Create {isRecurring ? 'Recurring ' : ''}Event
           </button>
         </form>
       </motion.div>
@@ -192,6 +257,7 @@ const DayCell = ({ day, isToday, events, onSelect }: DayCellProps) => {
               <span className={`text-[8px] sm:text-[9px] font-bold truncate hidden sm:block leading-tight ${isToday ? 'text-white' : ev.text_color}`}>
                 {ev.title}
               </span>
+              {ev.isRecurring && <LuRepeat className={`w-2 h-2 shrink-0 ${isToday ? 'text-white/70' : 'text-slate-400'}`} />}
             </div>
           ))}
           {events.length > 2 && (
@@ -267,7 +333,10 @@ const EventPanel = ({ day, month, year, events, onClose, onAddEventClick, onRemo
               >
                 <span className="text-xl shrink-0">{ev.emoji}</span>
                 <div className={`font-bold flex-1 ${ev.text_color}`}>
-                  <p className="text-sm">{ev.title}</p>
+                  <p className="text-sm flex items-center gap-1.5">
+                    {ev.title}
+                    {ev.isRecurring && <LuRepeat className="w-3 h-3 opacity-60" />}
+                  </p>
                   {ev.time && <p className="text-[10px] opacity-70 mt-0.5 uppercase tracking-wide">{formatEventTime(ev.time)}</p>}
                 </div>
                 <button
@@ -304,17 +373,25 @@ const UpcomingSidebar = ({ events, onAddEventClick }: {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    return events
-      .filter(ev => {
-        const d = parseDateString(ev.date);
-        const evDate = new Date(d.year, d.month, d.day);
-        return evDate >= today;
-      })
-      .sort((a, b) => {
-        const d1 = parseDateString(a.date);
-        const d2 = parseDateString(b.date);
-        return new Date(d1.year, d1.month, d1.day).getTime() - new Date(d2.year, d2.month, d2.day).getTime();
-      })
+    const expanded: { ev: CalendarEvent; date: Date; label: string }[] = [];
+    const lookaheadDays = 14;
+
+    for (let i = 0; i < lookaheadDays; i++) {
+      const targetDate = new Date(today);
+      targetDate.setDate(today.getDate() + i);
+
+      const dayEvents = getEventsForDay(events, targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+
+      dayEvents.forEach(ev => {
+        let label = i === 0 ? 'Today!' : i === 1 ? 'Tomorrow' : `In ${i} days`;
+        if (ev.time) label += ` at ${formatEventTime(ev.time)}`;
+
+        expanded.push({ ev, date: new Date(targetDate), label });
+      });
+    }
+
+    return expanded
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
       .slice(0, 6);
   }, [events]);
 
@@ -332,17 +409,16 @@ const UpcomingSidebar = ({ events, onAddEventClick }: {
         <p className="text-slate-400 text-sm font-medium text-center py-4">All clear! No upcoming events 🎉</p>
       ) : (
         <div className="flex flex-col gap-2.5">
-          {upcoming.map(ev => {
-            const d = parseDateString(ev.date);
-            const evDate = new Date(d.year, d.month, d.day);
-            const diffDays = Math.round((evDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-            
-            let dateLabel = diffDays === 0 ? 'Today!' : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} days`;
-            if (ev.time) dateLabel += ` at ${formatEventTime(ev.time)}`;
+          {upcoming.map(({ ev, date, label }, idx) => {
+            const d = {
+              year: date.getFullYear(),
+              month: date.getMonth(),
+              day: date.getDate()
+            };
 
             return (
               <motion.div
-                key={ev.id}
+                key={`${ev.id}-${idx}`}
                 whileHover={{ x: 3 }}
                 className={`flex items-center gap-3 p-3 rounded-2xl border ${ev.color} border-opacity-50`}
               >
@@ -350,7 +426,7 @@ const UpcomingSidebar = ({ events, onAddEventClick }: {
                 <div className="flex-1 min-w-0">
                   <p className={`font-bold text-sm truncate ${ev.text_color}`}>{ev.title}</p>
                   <p className="text-xs text-slate-400 font-medium">
-                    {MONTH_NAMES[d.month]} {d.day} · <span className="font-bold">{dateLabel}</span>
+                    {MONTH_NAMES[d.month]} {d.day} · <span className="font-bold">{label}</span>
                   </p>
                 </div>
               </motion.div>
@@ -418,7 +494,7 @@ export const FamilyCalendar = () => {
     setIsModalOpen(true);
   };
 
-  const handleSaveEvent = (data: { title: string; date: string; time?: string; emoji: string }) => {
+  const handleSaveEvent = (data: any) => {
     addEvent(data);
     setIsModalOpen(false);
   };

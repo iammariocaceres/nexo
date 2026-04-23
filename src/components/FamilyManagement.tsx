@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LuUsers, LuShield, LuUser, LuStar, LuTrash2,
-  LuSquareCheck, LuTrophy, LuPlus, LuX, LuPencilLine, LuCopy
+  LuSquareCheck, LuTrophy, LuPlus, LuX, LuPencilLine, LuCopy,
+  LuCirclePause, LuCirclePlay
 } from 'react-icons/lu';
 import { useFamilyStore, type TimeSlot, type Member, type Task } from '../store/useFamilyStore';
 
@@ -274,9 +275,20 @@ const TasksPanel = () => {
   const { tasks, members, removeTask, addTask, updateTask } = useFamilyStore();
   const todayStr = new Date().toDateString();
   const [confirm, setConfirm] = useState<string | null>(null);
+  const [confirmToggle, setConfirmToggle] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
 
-  const [form, setForm] = useState({ title: '', emoji: '✅', points: 10, timeSlot: 'morning' as TimeSlot, assignedTo: members[0]?.id ?? '', days: ALL_DAYS });
+  const [form, setForm] = useState({
+    title: '',
+    emoji: '✅',
+    points: 10,
+    timeSlot: 'morning' as TimeSlot,
+    assignedTo: members[0]?.id ?? '',
+    days: ALL_DAYS,
+    startDate: '',
+    endDate: '',
+    isActive: true
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Task>>({});
 
@@ -284,7 +296,17 @@ const TasksPanel = () => {
     if (!form.title.trim()) return;
     addTask(form);
     setShowForm(false);
-    setForm({ title: '', emoji: '✅', points: 10, timeSlot: 'morning', assignedTo: members[0]?.id ?? '', days: ALL_DAYS });
+    setForm({
+      title: '',
+      emoji: '✅',
+      points: 10,
+      timeSlot: 'morning',
+      assignedTo: members[0]?.id ?? '',
+      days: ALL_DAYS,
+      startDate: '',
+      endDate: '',
+      isActive: true
+    });
   };
 
   const handleDuplicate = (task: Task) => {
@@ -295,6 +317,9 @@ const TasksPanel = () => {
       timeSlot: task.timeSlot,
       assignedTo: task.assignedTo,
       days: task.days,
+      startDate: task.startDate || '',
+      endDate: task.endDate || '',
+      isActive: task.isActive
     });
     setShowForm(true);
   };
@@ -396,6 +421,39 @@ const TasksPanel = () => {
                 <option value="afternoon">🌤️ Afternoon</option>
                 <option value="night">🌙 Night</option>
               </select>
+
+              {/* Status and Dates */}
+              <div className="col-span-2 grid grid-cols-3 gap-2 p-3 bg-white/50 rounded-2xl border border-primary/10">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Status</label>
+                  <button
+                    onClick={() => setForm(f => ({ ...f, isActive: !f.isActive }))}
+                    className={`h-10 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${form.isActive ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}
+                  >
+                    <div className={`w-2 h-2 rounded-full ${form.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+                    {form.isActive ? 'Enabled' : 'Disabled'}
+                  </button>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Starts (Optional)</label>
+                  <input
+                    type="date"
+                    value={form.startDate}
+                    onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
+                    className="h-10 px-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Ends (Optional)</label>
+                  <input
+                    type="date"
+                    value={form.endDate}
+                    onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
+                    className="h-10 px-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+                  />
+                </div>
+              </div>
+
               <div className="col-span-2 flex items-center justify-between mt-1">
                 <DayPicker selected={form.days} onChange={d => setForm(f => ({ ...f, days: d }))} />
                 <button
@@ -437,14 +495,50 @@ const TasksPanel = () => {
                     </select>
                   </div>
                   <DayPicker selected={editForm.days ?? task.days} onChange={d => setEditForm(f => ({ ...f, days: d }))} />
+
+                  {/* Edit Status and Dates */}
+                  <div className="grid grid-cols-3 gap-2 mt-1">
+                    <button
+                      onClick={() => setEditForm(f => ({ ...f, isActive: f.isActive !== undefined ? !f.isActive : !task.isActive }))}
+                      className={`h-8 px-2 rounded-lg font-bold text-[10px] transition-all flex items-center justify-center gap-1.5 ${(editForm.isActive ?? task.isActive) ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}
+                    >
+                      <div className={`w-1.5 h-1.5 rounded-full ${(editForm.isActive ?? task.isActive) ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                      {(editForm.isActive ?? task.isActive) ? 'Active' : 'Paused'}
+                    </button>
+                    <input
+                      type="date"
+                      value={editForm.startDate ?? task.startDate ?? ''}
+                      onChange={e => setEditForm(f => ({ ...f, startDate: e.target.value }))}
+                      className="h-8 px-1.5 rounded-lg border border-slate-200 text-[10px] font-medium focus:outline-none bg-white"
+                    />
+                    <input
+                      type="date"
+                      value={editForm.endDate ?? task.endDate ?? ''}
+                      onChange={e => setEditForm(f => ({ ...f, endDate: e.target.value }))}
+                      className="h-8 px-1.5 rounded-lg border border-slate-200 text-[10px] font-medium focus:outline-none bg-white"
+                    />
+                  </div>
                 </div>
               ) : (
                 <>
-                  <span className="text-xl shrink-0">{task.emoji}</span>
+                  <div className="relative shrink-0">
+                    <span className="text-xl">{task.emoji}</span>
+                    {!task.isActive && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-slate-400 border-2 border-white rounded-full" title="Paused" />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`font-bold text-sm leading-tight ${isCompleted ? 'line-through text-slate-400' : 'text-slate-700'}`}>{task.title}</p>
+                    <p className={`font-bold text-sm leading-tight ${isCompleted ? 'line-through text-slate-400' : task.isActive ? 'text-slate-700' : 'text-slate-400'}`}>
+                      {task.title}
+                      {!task.isActive && <span className="ml-1.5 text-[9px] font-black uppercase text-slate-400 tracking-wider bg-slate-100 px-1.5 py-0.5 rounded-md">Paused</span>}
+                    </p>
                     <p className="text-[10px] text-slate-400 font-medium mt-0.5">
                       {member?.name} · {task.timeSlot} · +{task.points} XP · {task.days.length === 7 ? 'Every day' : task.days.join(', ')}
+                      {(task.startDate || task.endDate) && (
+                        <span className="text-primary/70">
+                          {' · '} 🗓️ {task.startDate || '...'} {task.endDate ? `to ${task.endDate}` : 'onwards'}
+                        </span>
+                      )}
                       {isCompleted && ' · ✅ Done'}
                     </p>
                   </div>
@@ -462,8 +556,21 @@ const TasksPanel = () => {
                     <button onClick={() => { removeTask(task.id); setConfirm(null); }} className="px-2 py-1.5 bg-rose-500 text-white rounded-lg text-xs font-black">Del</button>
                     <button onClick={() => setConfirm(null)} className="p-1.5 hover:bg-slate-200 rounded-lg"><LuX className="w-3.5 h-3.5 text-slate-500" /></button>
                   </motion.div>
+                ) : confirmToggle === task.id ? (
+                  <motion.div key="confirm-toggle" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-1.5 flex-col sm:flex-row">
+                    <button
+                      onClick={() => { updateTask(task.id, { isActive: !task.isActive }); setConfirmToggle(null); }}
+                      className={`px-2 py-1.5 ${task.isActive ? 'bg-slate-500' : 'bg-emerald-500'} text-white rounded-lg text-[10px] font-black`}
+                    >
+                      {task.isActive ? 'Pause' : 'Activate'}
+                    </button>
+                    <button onClick={() => setConfirmToggle(null)} className="p-1.5 hover:bg-slate-200 rounded-lg"><LuX className="w-3.5 h-3.5 text-slate-500" /></button>
+                  </motion.div>
                 ) : (
                   <>
+                    <button onClick={() => setConfirmToggle(task.id)} className={`p-1.5 transition-colors ${task.isActive ? 'text-slate-400 hover:text-amber-500' : 'text-emerald-500 hover:text-emerald-600'}`} title={task.isActive ? 'Pause Task' : 'Activate Task'}>
+                      {task.isActive ? <LuCirclePause className="w-4 h-4" /> : <LuCirclePlay className="w-4 h-4" />}
+                    </button>
                     <button onClick={() => { setEditingId(task.id); setEditForm({}); }} className="p-1.5 text-slate-400 hover:text-primary transition-colors" title="Edit"><LuPencilLine className="w-4 h-4" /></button>
                     <button onClick={() => handleDuplicate(task)} className="p-1.5 text-slate-400 hover:text-indigo-400 transition-colors" title="Duplicate"><LuCopy className="w-4 h-4" /></button>
                     <button onClick={() => setConfirm(task.id)} className="p-1.5 text-slate-300 hover:text-rose-400 transition-colors" title="Delete"><LuTrash2 className="w-4 h-4" /></button>
@@ -622,14 +729,14 @@ export const FamilyManagement = () => {
           <div>
             {isEditingName ? (
               <div className="flex items-center gap-2 mb-1">
-                <input 
-                  value={newName} 
-                  onChange={e => setNewName(e.target.value)} 
+                <input
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
                   className="text-2xl font-black text-slate-800 border-b-2 border-primary focus:outline-none bg-transparent max-w-[200px]"
                   autoFocus
                 />
-                <button onClick={handleSaveName} className="p-1 bg-primary text-white rounded-[6px] shadow-sm"><LuSquareCheck className="w-5 h-5"/></button>
-                <button onClick={() => setIsEditingName(false)} className="p-1 bg-slate-200 text-slate-600 rounded-[6px] shadow-sm"><LuX className="w-5 h-5"/></button>
+                <button onClick={handleSaveName} className="p-1 bg-primary text-white rounded-[6px] shadow-sm"><LuSquareCheck className="w-5 h-5" /></button>
+                <button onClick={() => setIsEditingName(false)} className="p-1 bg-slate-200 text-slate-600 rounded-[6px] shadow-sm"><LuX className="w-5 h-5" /></button>
               </div>
             ) : (
               <div className="flex items-center gap-2 group/title cursor-pointer mb-1" onClick={() => { setIsEditingName(true); setNewName(group?.name || ''); }}>
@@ -650,7 +757,7 @@ export const FamilyManagement = () => {
               <button onClick={() => setConfirmReset(false)} className="px-2 py-1.5 bg-white text-slate-600 border font-bold text-xs rounded-lg shadow-sm">Cancel</button>
             </div>
           ) : (
-            <button 
+            <button
               onClick={() => setConfirmReset(true)}
               className="px-4 py-2 bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-600 font-bold text-sm rounded-xl border border-slate-200 hover:border-rose-200 transition-colors shadow-sm whitespace-nowrap"
             >

@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { LuStar, LuTrophy, LuZap, LuCalendar, LuFlame } from 'react-icons/lu';
-import { useFamilyStore, type Member } from '../store/useFamilyStore';
+import { LuStar, LuTrophy, LuZap, LuCalendar, LuFlame, LuRepeat } from 'react-icons/lu';
+import { useFamilyStore, getEventsForDay, isTaskActive, type Member, type CalendarEvent } from '../store/useFamilyStore';
+import { formatEventTime } from '../lib/dateUtils';
 
 // ─── Member Progress Card ─────────────────────────────────────────────────────
 
@@ -9,8 +11,9 @@ const MemberCard = ({ member }: { member: Member }) => {
   const JS_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const currentDay = JS_DAYS[new Date().getDay()];
   const JS_TODAY = new Date().toDateString();
-  
-  const memberTasks = tasks.filter(t => t.assignedTo === member.id && t.days.includes(currentDay));
+  const today = new Date();
+
+  const memberTasks = tasks.filter(t => t.assignedTo === member.id && t.days.includes(currentDay) && isTaskActive(t, today));
   const completed = memberTasks.filter(t => !!(t.completedAt && new Date(t.completedAt).toDateString() === JS_TODAY)).length;
   const total = memberTasks.length;
   const pct = total > 0 ? (completed / total) * 100 : 0;
@@ -141,7 +144,8 @@ const QuickStats = () => {
   const JS_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const currentDay = JS_DAYS[new Date().getDay()];
   const JS_TODAY = new Date().toDateString();
-  const todaysTasks = tasks.filter(t => t.days.includes(currentDay));
+  const today = new Date();
+  const todaysTasks = tasks.filter(t => t.days.includes(currentDay) && isTaskActive(t, today));
 
   const totalCompleted = todaysTasks.filter(t => !!(t.completedAt && new Date(t.completedAt).toDateString() === JS_TODAY)).length;
   const totalTasks = todaysTasks.length;
@@ -150,9 +154,9 @@ const QuickStats = () => {
   return (
     <div className="grid grid-cols-3 gap-3">
       {[
-        { label: 'Chores Done',    value: `${totalCompleted}/${totalTasks}`, emoji: '✅', color: 'bg-emerald-50 border-emerald-100', text: 'text-emerald-700' },
-        { label: 'XP Earned Today', value: `+${totalEarned}`,               emoji: '⚡', color: 'bg-amber-50 border-amber-100',   text: 'text-amber-700'  },
-        { label: 'Day Streak',     value: '3 days',                          emoji: '🔥', color: 'bg-rose-50 border-rose-100',     text: 'text-rose-700'   },
+        { label: 'Chores Done', value: `${totalCompleted}/${totalTasks}`, emoji: '✅', color: 'bg-emerald-50 border-emerald-100', text: 'text-emerald-700' },
+        { label: 'XP Earned Today', value: `+${totalEarned}`, emoji: '⚡', color: 'bg-amber-50 border-amber-100', text: 'text-amber-700' },
+        { label: 'Day Streak', value: '3 days', emoji: '🔥', color: 'bg-rose-50 border-rose-100', text: 'text-rose-700' },
       ].map(stat => (
         <motion.div
           key={stat.label}
@@ -170,34 +174,36 @@ const QuickStats = () => {
   );
 };
 
-// ─── Upcoming Events ──────────────────────────────────────────────────────────
-
-const formatEventTime = (timeStr?: string) => {
-  if (!timeStr) return '';
-  const [h, m] = timeStr.split(':');
-  const d = new Date();
-  d.setHours(parseInt(h, 10), parseInt(m, 10));
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-};
+// Helpers removed, now imported from dateUtils and useFamilyStore
 
 const UpcomingEvents = () => {
   const { events } = useFamilyStore();
-  
-  const upcoming = [...events]
-    .filter(ev => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const [y, m, d] = ev.date.split('-');
-      const evDate = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
-      return evDate >= today;
-    })
-    .sort((a, b) => {
-      const [yA, mA, dA] = a.date.split('-');
-      const [yB, mB, dB] = b.date.split('-');
-      return new Date(parseInt(yA, 10), parseInt(mA, 10) - 1, parseInt(dA, 10)).getTime() - 
-             new Date(parseInt(yB, 10), parseInt(mB, 10) - 1, parseInt(dB, 10)).getTime();
-    })
-    .slice(0, 4);
+
+  const upcoming = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const expanded: { ev: CalendarEvent; date: Date; label: string }[] = [];
+    const lookaheadDays = 14;
+
+    for (let i = 0; i < lookaheadDays; i++) {
+      const targetDate = new Date(today);
+      targetDate.setDate(today.getDate() + i);
+
+      const dayEvents = getEventsForDay(events, targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+
+      dayEvents.forEach(ev => {
+        let label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : `In ${i} days`;
+        if (ev.time) label += ` at ${formatEventTime(ev.time)}`;
+
+        expanded.push({ ev, date: new Date(targetDate), label });
+      });
+    }
+
+    return expanded
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .slice(0, 4);
+  }, [events]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -212,20 +218,16 @@ const UpcomingEvents = () => {
         <p className="text-slate-400 text-sm font-medium text-center py-4">No upcoming events 🎉</p>
       ) : (
         <div className="flex flex-col gap-2.5">
-          {upcoming.map(ev => {
-            const [y, m, d] = ev.date.split('-');
-            const evDate = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
-            const diffDays = Math.round((evDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-            
-            let dateLabel = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Tomorrow' : `In ${diffDays} days`;
-            if (ev.time) dateLabel += ` at ${formatEventTime(ev.time)}`;
-            
+          {upcoming.map(({ ev, label }, idx) => {
             return (
-              <div key={ev.id} className={`flex items-center gap-3 p-3 rounded-2xl border ${ev.color} border-opacity-50`}>
+              <div key={`${ev.id}-${idx}`} className={`flex items-center gap-3 p-3 rounded-2xl border ${ev.color} border-opacity-50`}>
                 <span className="text-xl shrink-0">{ev.emoji}</span>
                 <div className="flex-1 min-w-0">
-                  <p className={`font-bold text-sm truncate ${ev.text_color}`}>{ev.title}</p>
-                  <p className="text-xs text-slate-500 font-medium">{dateLabel}</p>
+                  <p className={`font-bold text-sm truncate ${ev.text_color} flex items-center gap-1.5`}>
+                    {ev.title}
+                    {ev.isRecurring && <LuRepeat className="w-3 h-3 opacity-60" />}
+                  </p>
+                  <p className="text-xs text-slate-500 font-medium">{label}</p>
                 </div>
               </div>
             );
