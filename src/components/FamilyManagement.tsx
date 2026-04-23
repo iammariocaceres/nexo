@@ -6,6 +6,7 @@ import {
   LuCirclePause, LuCirclePlay
 } from 'react-icons/lu';
 import { useFamilyStore, type TimeSlot, type Member, type Task } from '../store/useFamilyStore';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -113,7 +114,7 @@ const MembersPanel = () => {
               </div>
             </div>
             <div className="flex gap-2">
-              <input value={addForm.emoji} onChange={e => setAddForm(f => ({ ...f, emoji: e.target.value }))} className="w-14 items-center text-center px-2 py-2 rounded-xl border" maxLength={2} placeholder="😎" />
+              <input value={addForm.emoji} onChange={e => setAddForm(f => ({ ...f, emoji: e.target.value }))} className="w-14 items-center text-center px-2 py-2 rounded-xl border" maxLength={10} placeholder="😎" />
               <div className="flex items-center gap-1.5 flex-1 px-3 py-2 border rounded-xl bg-white overflow-x-auto">
                 {COLORS.map(c => (
                   <button key={c} onClick={() => setAddForm(f => ({ ...f, color: c }))} className={`w-5 h-5 rounded-full shrink-0 ${addForm.color === c ? 'ring-2 ring-offset-1 ring-slate-800' : ''}`} style={{ backgroundColor: c }} />
@@ -173,7 +174,7 @@ const MembersPanel = () => {
                         <option value="member">Member</option>
                         <option value="admin">Admin</option>
                       </select>
-                      <input value={editForm.emoji ?? member.emoji} onChange={e => setEditForm(f => ({ ...f, emoji: e.target.value }))} className="w-10 text-center px-1 rounded-lg border text-sm" maxLength={2} />
+                      <input value={editForm.emoji ?? member.emoji} onChange={e => setEditForm(f => ({ ...f, emoji: e.target.value }))} className="w-10 text-center px-1 rounded-lg border text-sm" maxLength={10} />
                     </div>
                     {/* Color picker small */}
                     <div className="flex items-center gap-1 mt-1 overflow-x-auto py-1">
@@ -380,50 +381,55 @@ const TasksPanel = () => {
             exit={{ opacity: 0, height: 0 }}
             className="mb-4 p-4 bg-primary/5 border border-primary/20 rounded-2xl overflow-hidden"
           >
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <input
-                value={form.emoji}
-                onChange={e => setForm(f => ({ ...f, emoji: e.target.value }))}
-                className="col-span-1 px-3 py-2 rounded-xl border border-slate-200 font-bold text-center text-xl focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder="Emoji"
-                maxLength={2}
-              />
-              <input
-                value={form.title}
-                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                className="col-span-1 px-3 py-2 rounded-xl border border-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder="Task title..."
-              />
-              <div className="flex items-center gap-2">
-                <LuStar className="w-4 h-4 text-amber-400" />
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-4 gap-3">
                 <input
-                  type="number"
-                  value={form.points}
-                  onChange={e => setForm(f => ({ ...f, points: Number(e.target.value) }))}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder="XP points"
-                  min={1}
+                  value={form.emoji}
+                  onChange={e => setForm(f => ({ ...f, emoji: e.target.value }))}
+                  className="col-span-1 px-3 py-2 rounded-xl border border-slate-200 font-bold text-center text-xl focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder="Emoji"
+                  maxLength={10}
+                />
+                <input
+                  value={form.title}
+                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                  className="col-span-3 px-3 py-2 rounded-xl border border-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder="Task title..."
                 />
               </div>
-              <select
-                value={form.assignedTo}
-                onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))}
-                className="px-3 py-2 rounded-xl border border-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
-              >
-                {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-              <select
-                value={form.timeSlot}
-                onChange={e => setForm(f => ({ ...f, timeSlot: e.target.value as TimeSlot }))}
-                className="px-3 py-2 rounded-xl border border-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
-              >
-                <option value="morning">☀️ Morning</option>
-                <option value="afternoon">🌤️ Afternoon</option>
-                <option value="night">🌙 Night</option>
-              </select>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-xl bg-white">
+                  <LuStar className="w-4 h-4 text-amber-400 shrink-0" />
+                  <input
+                    type="number"
+                    value={form.points}
+                    onChange={e => setForm(f => ({ ...f, points: Number(e.target.value) }))}
+                    className="w-full font-bold focus:outline-none text-sm"
+                    placeholder="XP"
+                    min={1}
+                  />
+                </div>
+                <select
+                  value={form.assignedTo}
+                  onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))}
+                  className="px-3 py-2 rounded-xl border border-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white text-sm"
+                >
+                  {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
+                <select
+                  value={form.timeSlot}
+                  onChange={e => setForm(f => ({ ...f, timeSlot: e.target.value as TimeSlot }))}
+                  className="col-span-2 md:col-span-1 px-3 py-2 rounded-xl border border-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white text-sm"
+                >
+                  <option value="morning">☀️ Morning</option>
+                  <option value="afternoon">🌤️ Afternoon</option>
+                  <option value="night">🌙 Night</option>
+                </select>
+              </div>
 
               {/* Status and Dates */}
-              <div className="col-span-2 grid grid-cols-3 gap-2 p-3 bg-white/50 rounded-2xl border border-primary/10">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 bg-white/50 rounded-2xl border border-primary/10">
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Status</label>
                   <button
@@ -454,11 +460,11 @@ const TasksPanel = () => {
                 </div>
               </div>
 
-              <div className="col-span-2 flex items-center justify-between mt-1">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-1">
                 <DayPicker selected={form.days} onChange={d => setForm(f => ({ ...f, days: d }))} />
                 <button
                   onClick={handleAdd}
-                  className="px-4 py-2 bg-primary text-white rounded-xl font-black text-sm hover:scale-105 active:scale-95 transition-transform shadow-md"
+                  className="w-full md:w-auto px-6 py-2.5 bg-primary text-white rounded-xl font-black text-sm hover:scale-105 active:scale-95 transition-transform shadow-md"
                 >
                   Add Task ✅
                 </button>
@@ -480,7 +486,7 @@ const TasksPanel = () => {
               {isEditing ? (
                 <div className="flex-1 flex flex-col gap-2">
                   <div className="flex gap-2">
-                    <input className="w-12 text-center text-xl rounded-lg border px-1" value={editForm.emoji ?? task.emoji} onChange={e => setEditForm(f => ({ ...f, emoji: e.target.value }))} maxLength={2} />
+                    <input className="w-12 text-center text-xl rounded-lg border px-1" value={editForm.emoji ?? task.emoji} onChange={e => setEditForm(f => ({ ...f, emoji: e.target.value }))} maxLength={10} />
                     <input className="flex-1 px-2 text-sm rounded-lg border font-bold" value={editForm.title ?? task.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} />
                     <input type="number" className="w-16 text-sm rounded-lg border font-bold text-center" value={editForm.points ?? task.points} onChange={e => setEditForm(f => ({ ...f, points: Number(e.target.value) }))} min={1} />
                   </div>
@@ -623,50 +629,54 @@ const RewardsPanel = () => {
             exit={{ opacity: 0, height: 0 }}
             className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden"
           >
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <input
-                value={form.emoji}
-                onChange={e => setForm(f => ({ ...f, emoji: e.target.value }))}
-                className="col-span-1 px-3 py-2 rounded-xl border border-slate-200 font-bold text-center text-xl focus:outline-none focus:ring-2 focus:ring-amber-300"
-                placeholder="Emoji"
-                maxLength={2}
-              />
-              <input
-                value={form.title}
-                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                className="col-span-1 px-3 py-2 rounded-xl border border-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-amber-300"
-                placeholder="Reward title..."
-              />
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-4 gap-3">
+                <input
+                  value={form.emoji}
+                  onChange={e => setForm(f => ({ ...f, emoji: e.target.value }))}
+                  className="col-span-1 px-3 py-2 rounded-xl border border-slate-200 font-bold text-center text-xl focus:outline-none focus:ring-2 focus:ring-amber-300"
+                  placeholder="Emoji"
+                  maxLength={10}
+                />
+                <input
+                  value={form.title}
+                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                  className="col-span-3 px-3 py-2 rounded-xl border border-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-amber-300"
+                  placeholder="Reward title..."
+                />
+              </div>
               <input
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                className="col-span-2 px-3 py-2 rounded-xl border border-slate-200 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
                 placeholder="Short description..."
               />
-              <div className="flex items-center gap-2">
-                <LuStar className="w-4 h-4 text-amber-400" />
-                <input
-                  type="number"
-                  value={form.cost}
-                  onChange={e => setForm(f => ({ ...f, cost: Number(e.target.value) }))}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-amber-300"
-                  placeholder="Cost XP"
-                  min={1}
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-xl bg-white">
+                  <LuStar className="w-4 h-4 text-amber-400 shrink-0" />
+                  <input
+                    type="number"
+                    value={form.cost}
+                    onChange={e => setForm(f => ({ ...f, cost: Number(e.target.value) }))}
+                    className="w-full font-bold focus:outline-none text-sm"
+                    placeholder="Cost"
+                    min={1}
+                  />
+                </div>
+                <select
+                  value={form.category}
+                  onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                  className="px-3 py-2 rounded-xl border border-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-amber-300 bg-white text-sm"
+                >
+                  <option value="Fun">Fun</option>
+                  <option value="Food">Food</option>
+                  <option value="Screen Time">Screen Time</option>
+                  <option value="Special">Special</option>
+                </select>
               </div>
-              <select
-                value={form.category}
-                onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                className="px-3 py-2 rounded-xl border border-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-amber-300 bg-white"
-              >
-                <option value="Fun">Fun</option>
-                <option value="Food">Food</option>
-                <option value="Screen Time">Screen Time</option>
-                <option value="Special">Special</option>
-              </select>
               <button
                 onClick={handleAdd}
-                className="col-span-2 py-2 bg-amber-400 text-white rounded-xl font-black text-sm hover:scale-105 active:scale-95 transition-transform shadow-md mt-1"
+                className="w-full py-3 bg-amber-400 text-white rounded-xl font-black text-sm hover:scale-105 active:scale-95 transition-transform shadow-md mt-1"
               >
                 Create Reward 🎁
               </button>
@@ -701,10 +711,12 @@ const RewardsPanel = () => {
 export const FamilyManagement = () => {
   const { group, members, updateFamilyName, resetAllPoints } = useFamilyStore();
   const admins = members.filter(m => m.role === 'admin');
+  const isMobile = useIsMobile();
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState(group?.name || '');
   const [confirmReset, setConfirmReset] = useState(false);
+  const [activeTab, setActiveTab] = useState<'members' | 'tasks' | 'rewards'>('members');
 
   const handleSaveName = async () => {
     if (newName.trim()) {
@@ -718,21 +730,27 @@ export const FamilyManagement = () => {
     setConfirmReset(false);
   };
 
+  const tabs = [
+    { id: 'members', label: 'Members', icon: LuUsers, color: 'text-blue-500' },
+    { id: 'tasks',   label: 'Tasks',   icon: LuSquareCheck, color: 'text-emerald-500' },
+    { id: 'rewards', label: 'Rewards', icon: LuTrophy, color: 'text-amber-500' },
+  ] as const;
+
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 pb-20 md:pb-5">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-linear-to-br from-slate-600 to-slate-800 rounded-2xl flex items-center justify-center shadow-lg shrink-0">
-            <LuShield className="w-6 h-6 text-white" />
+          <div className="w-10 h-10 md:w-12 md:h-12 bg-linear-to-br from-slate-600 to-slate-800 rounded-2xl flex items-center justify-center shadow-lg shrink-0">
+            <LuShield className="w-5 h-5 md:w-6 md:h-6 text-white" />
           </div>
-          <div>
+          <div className="min-w-0">
             {isEditingName ? (
               <div className="flex items-center gap-2 mb-1">
                 <input
                   value={newName}
                   onChange={e => setNewName(e.target.value)}
-                  className="text-2xl font-black text-slate-800 border-b-2 border-primary focus:outline-none bg-transparent max-w-[200px]"
+                  className="text-xl md:text-2xl font-black text-slate-800 border-b-2 border-primary focus:outline-none bg-transparent max-w-[150px] md:max-w-[200px]"
                   autoFocus
                 />
                 <button onClick={handleSaveName} className="p-1 bg-primary text-white rounded-[6px] shadow-sm"><LuSquareCheck className="w-5 h-5" /></button>
@@ -740,11 +758,11 @@ export const FamilyManagement = () => {
               </div>
             ) : (
               <div className="flex items-center gap-2 group/title cursor-pointer mb-1" onClick={() => { setIsEditingName(true); setNewName(group?.name || ''); }}>
-                <h1 className="text-2xl font-black text-slate-800 leading-tight">{group?.name || 'Familia'}</h1>
+                <h1 className="text-xl md:text-2xl font-black text-slate-800 leading-tight truncate">{group?.name || 'Familia'}</h1>
                 <LuPencilLine className="w-4 h-4 text-slate-300 opacity-0 group-hover/title:opacity-100 transition-opacity" />
               </div>
             )}
-            <p className="text-sm text-slate-500 font-medium leading-none">{admins.map(a => a.name).join(' & ')} manage here ⚙️</p>
+            <p className="text-xs md:text-sm text-slate-500 font-medium leading-none truncate">{admins.map(a => a.name).join(' & ')} manage here</p>
           </div>
         </div>
 
@@ -752,14 +770,14 @@ export const FamilyManagement = () => {
         <div className="flex items-center gap-2 shrink-0">
           {confirmReset ? (
             <div className="flex items-center gap-2 bg-rose-50 p-1.5 rounded-xl border border-rose-200">
-              <span className="text-xs font-bold text-rose-600 px-2 line-clamp-1 truncate">Are you sure?</span>
-              <button onClick={handleReset} className="px-3 py-1.5 bg-rose-500 text-white font-black text-xs rounded-lg shadow-sm whitespace-nowrap">Yes, Reset</button>
-              <button onClick={() => setConfirmReset(false)} className="px-2 py-1.5 bg-white text-slate-600 border font-bold text-xs rounded-lg shadow-sm">Cancel</button>
+              <span className="text-[10px] font-bold text-rose-600 px-2 line-clamp-1 truncate">Reset?</span>
+              <button onClick={handleReset} className="px-3 py-1.5 bg-rose-500 text-white font-black text-[10px] rounded-lg shadow-sm whitespace-nowrap uppercase">Reset</button>
+              <button onClick={() => setConfirmReset(false)} className="px-2 py-1.5 bg-white text-slate-600 border font-bold text-[10px] rounded-lg shadow-sm">X</button>
             </div>
           ) : (
             <button
               onClick={() => setConfirmReset(true)}
-              className="px-4 py-2 bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-600 font-bold text-sm rounded-xl border border-slate-200 hover:border-rose-200 transition-colors shadow-sm whitespace-nowrap"
+              className="px-3 py-2 bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-600 font-bold text-xs md:text-sm rounded-xl border border-slate-200 hover:border-rose-200 transition-colors shadow-sm whitespace-nowrap"
             >
               Reset Points 🔄
             </button>
@@ -768,19 +786,63 @@ export const FamilyManagement = () => {
       </div>
 
       {/* Admin notice */}
-      <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
-        <span className="text-2xl">🔐</span>
-        <p className="text-sm font-bold text-amber-700">
+      <div className="flex items-center gap-3 p-3 md:p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+        <span className="text-xl md:text-2xl">🔐</span>
+        <p className="text-[11px] md:text-sm font-bold text-amber-700 leading-tight">
           This section is for family admins only. Please make sure an adult is managing this.
         </p>
       </div>
 
+      {/* Mobile Tab Navigation */}
+      {isMobile && (
+        <div className="flex p-1 bg-slate-100/50 rounded-2xl border border-slate-200/50">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${
+                  isActive 
+                    ? `bg-white text-slate-800 shadow-sm border border-slate-200 ${tab.color}` 
+                    : 'text-slate-400'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isActive ? tab.color : ''}`} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Management panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <MembersPanel />
-        <RewardsPanel />
+      <div className="flex flex-col gap-5">
+        {isMobile ? (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {activeTab === 'members' && <MembersPanel />}
+              {activeTab === 'tasks' && <TasksPanel />}
+              {activeTab === 'rewards' && <RewardsPanel />}
+            </motion.div>
+          </AnimatePresence>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <MembersPanel />
+              <RewardsPanel />
+            </div>
+            <TasksPanel />
+          </>
+        )}
       </div>
-      <TasksPanel />
     </div>
   );
 };

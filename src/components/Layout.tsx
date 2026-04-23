@@ -4,6 +4,7 @@ import { AppHeader } from './AppHeader';
 import { BottomNavBar } from './BottomNavBar';
 import { IdleScreen } from './IdleScreen';
 import { useIdleTimer } from '../hooks/useIdleTimer';
+import { useDayRefresh } from '../hooks/useDayRefresh';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -14,6 +15,7 @@ const IDLE_TIMEOUT_MS = 1 * 60 * 1000;
 
 export const Layout = ({ children }: LayoutProps) => {
   const isIdle = useIdleTimer(IDLE_TIMEOUT_MS);
+  useDayRefresh();
 
   return (
     <div className="flex flex-col h-screen bg-nexo-light font-plus-jakarta overflow-hidden">

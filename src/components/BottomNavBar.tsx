@@ -7,6 +7,7 @@ import {
   LuTrophy,
   LuSettings,
 } from 'react-icons/lu';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Home',     icon: LuLayoutDashboard, route: '/dashboard',  emoji: '🏠' },
@@ -19,15 +20,19 @@ const NAV_ITEMS = [
 export const BottomNavBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile();
 
   const activeRoute = location.pathname;
 
+  const items = isMobile ? NAV_ITEMS.filter(item => item.id === 'admin') : NAV_ITEMS;
+
   return (
     <nav
-      className="relative z-50 flex items-center justify-around bg-white/80 backdrop-blur-xl border-t border-white/40 shadow-2xl shadow-slate-900/10"
+      className={`relative z-50 flex items-center bg-white/80 backdrop-blur-xl border-t border-white/40 shadow-2xl shadow-slate-900/10 ${isMobile ? 'justify-center' : 'justify-around'}`}
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
+
         const Icon = item.icon;
         const isActive = activeRoute === item.route || (activeRoute === '/' && item.route === '/dashboard');
 

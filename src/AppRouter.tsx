@@ -2,6 +2,7 @@ import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { PinGate } from './components/PinGate';
+import { useIsMobile } from './hooks/useIsMobile';
 
 // Lazy-loaded screens
 const Dashboard        = React.lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -24,16 +25,25 @@ const wrap = (Screen: React.ComponentType) => (
   </Layout>
 );
 
+const MobileRedirect = ({ children }: { children: React.ReactNode }) => {
+  const isMobile = useIsMobile();
+  if (isMobile) {
+    return <Navigate to="/management" replace />;
+  }
+  return <>{children}</>;
+};
+
 export const AppRouter = () => (
   <BrowserRouter>
     <Routes>
       <Route path="/"           element={<Navigate to="/dashboard" replace />} />
-      <Route path="/dashboard"  element={wrap(Dashboard)} />
-      <Route path="/calendar"   element={wrap(FamilyCalendar)} />
-      <Route path="/chores"     element={wrap(TaskBoard)} />
-      <Route path="/rewards"    element={wrap(RewardsStore)} />
+      <Route path="/dashboard"  element={<MobileRedirect>{wrap(Dashboard)}</MobileRedirect>} />
+      <Route path="/calendar"   element={<MobileRedirect>{wrap(FamilyCalendar)}</MobileRedirect>} />
+      <Route path="/chores"     element={<MobileRedirect>{wrap(TaskBoard)}</MobileRedirect>} />
+      <Route path="/rewards"    element={<MobileRedirect>{wrap(RewardsStore)}</MobileRedirect>} />
       <Route path="/management" element={<PinGate>{wrap(FamilyManagement)}</PinGate>} />
       <Route path="*"           element={<Navigate to="/dashboard" replace />} />
     </Routes>
   </BrowserRouter>
 );
+
